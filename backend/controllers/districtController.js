@@ -1,0 +1,98 @@
+const District = require('../models/District');
+const User = require('../models/User');
+
+// @desc    Get all districts
+// @route   GET /api/districts
+// @access  Private
+const getDistricts = async (req, res) => {
+    try {
+        const districts = await District.find().populate('supervisor', 'fullName role');
+        res.status(200).json({ success: true, count: districts.length, data: districts });
+    } catch (error) {
+        res.status(500).json({ success: true, message: error.message });
+    }
+};
+
+// @desc    Create new district
+// @route   POST /api/districts
+// @access  Private/Admin
+const createDistrict = async (req, res) => {
+    try {
+        const { name, code, supervisor, description } = req.body;
+
+        const district = await District.create({
+            name,
+            code,
+            supervisor: supervisor || null,
+            description
+        });
+
+        // If supervisor is assigned, update user's district field
+        if (supervisor) {
+            await User.findByIdAndUpdate(supervisor, { district: name });
+        }
+
+        res.status(201).json({ success: true, data: district });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Update district
+// @route   PUT /api/districts/:id
+// @access  Private/Admin
+const updateDistrict = async (req, res) => {
+    try {
+        const { name, code, supervisor, description } = req.body;
+        let district = await District.findById(req.params.id);
+
+        if (!district) {
+            return res.status(404).json({ success: false, message: 'District not found' });
+        }
+
+        // Handle supervisor change
+        if (supervisor && supervisor !== district.supervisor?.toString()) {
+            // Update new supervisor
+            await User.findByIdAndUpdate(supervisor, { district: name });
+            // Optionally reset old supervisor's district? 
+            // For now we just update the new one.
+        }
+
+        district = await District.findByIdAndUpdate(req.params.id, {
+            name,
+            code,
+            supervisor: supervisor || null,
+            description
+        }, { new: true, runValidators: true });
+
+        res.status(200).json({ success: true, data: district });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Delete district
+// @route   DELETE /api/districts/:id
+// @access  Private/Admin
+const deleteDistrict = async (req, res) => {
+    try {
+        const district = await District.findById(req.params.id);
+
+        if (!district) {
+            return res.status(404).json({ success: false, message: 'District not found' });
+        }
+
+        await district.deleteOne();
+
+        res.status(200).json({ success: true, data: {} });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+module.exports = {
+    getDistricts,
+    createDistrict,
+    updateDistrict,
+    deleteDistrict
+};

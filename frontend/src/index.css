@@ -1,0 +1,194 @@
+@import "tailwindcss";
+@import "@fontsource/plus-jakarta-sans/index.css";
+@import "@fontsource/plus-jakarta-sans/700.css";
+@import "@fontsource/plus-jakarta-sans/800.css";
+
+:root {
+  --navy: #001F3F;
+  --navy-light: #003366;
+  --navy-dark: #00152e;
+  --bg-soft: #F8FAFC;
+  --card-bg: #FFFFFF;
+  --text-main: #0F172A;
+  --text-muted: #64748B;
+  --text-emphasis: #001F3F;
+  --border-color: #F1F5F9;
+  --header-bg: #FFFFFF;
+  --table-header-bg: #F8FAFC;
+}
+
+.dark {
+  --navy: #38BDF8;
+  --navy-light: #7DD3FC;
+  --navy-dark: #0EA5E9;
+  --bg-soft: #020617;
+  --card-bg: #0f172a;
+  --text-main: #E2E8F0;
+  --text-muted: #94A3B8;
+  --text-emphasis: #F8FAFC;
+  --border-color: #1e293b;
+  --header-bg: #0f172a;
+  --table-header-bg: #1e293b;
+}
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --color-navy: var(--navy);
+  --color-navy-light: var(--navy-light);
+  --color-navy-dark: var(--navy-dark);
+  --color-bg-soft: var(--bg-soft);
+  --color-card-bg: var(--card-bg);
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
+  --color-text-emphasis: var(--text-emphasis);
+  --color-border-color: var(--border-color);
+  --color-header-bg: var(--header-bg);
+  --color-table-header-bg: var(--table-header-bg);
+}
+
+@layer base {
+  * {
+    @apply border-border-color;
+  }
+
+  body {
+    @apply bg-bg-soft text-text-main antialiased transition-colors duration-300;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+}
+
+@layer components {
+  .app-container {
+    @apply flex h-screen w-screen overflow-hidden gap-8 bg-bg-soft transition-colors duration-300;
+  }
+
+  .sidebar-navy {
+    @apply w-[300px] text-white shadow-2xl p-8 flex flex-col shrink-0 border-r border-white/5;
+    background: linear-gradient(to bottom, #001F3F, #00152e);
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-4 px-5 py-3.5 rounded-2xl text-sm font-semibold text-white/50 transition-all duration-300 no-underline hover:bg-white/10 hover:text-white;
+  }
+
+  .sidebar-link.active {
+    @apply bg-white/10 text-white shadow-lg;
+  }
+
+  .blue-stat-card {
+    @apply rounded-[32px] p-10 flex flex-col items-center justify-center text-center shadow-2xl border border-white/10 transition-all duration-500 hover:-translate-y-2;
+    background: linear-gradient(135deg, #001F3F, #003366);
+  }
+
+  .blue-stat-label {
+    @apply text-[11px] font-extrabold text-white/50 uppercase tracking-[0.2em] mb-4;
+  }
+
+  .blue-stat-value {
+    @apply text-5xl font-extrabold text-white tracking-tighter leading-none;
+  }
+
+  .premium-table-container {
+    @apply bg-card-bg rounded-[32px] border border-border-color overflow-hidden shadow-sm transition-all duration-300;
+  }
+
+  .premium-table {
+    @apply w-full border-collapse;
+  }
+
+  .premium-table th {
+    @apply bg-table-header-bg/50 p-6 text-left text-[11px] font-extrabold text-text-muted uppercase tracking-wider border-b border-border-color;
+  }
+
+  .premium-table td {
+    @apply p-6 text-sm border-b border-border-color transition-colors text-text-main;
+  }
+
+  .premium-table tr:hover td {
+    @apply bg-table-header-bg/30;
+  }
+
+  .btn-premium {
+    @apply bg-navy text-white px-8 py-3.5 rounded-2xl font-bold text-sm shadow-xl shadow-navy/20 transition-all duration-300 flex items-center gap-3 no-underline hover:-translate-y-0.5 hover:brightness-110 active:scale-95;
+  }
+
+  .premium-search {
+    @apply relative w-full max-w-md;
+  }
+
+  .premium-search input {
+    @apply w-full pl-14 pr-6 py-4 bg-card-bg border border-border-color rounded-2xl text-sm font-semibold shadow-sm transition-all text-text-main placeholder:text-text-muted focus:outline-none focus:border-navy focus:ring-4 focus:ring-navy/5;
+  }
+
+  .premium-search-icon {
+    @apply absolute left-5 top-1/2 -translate-y-1/2 text-text-muted;
+  }
+
+  /* Login & Auth Layouts */
+  .login-layout {
+    @apply flex min-h-screen w-full bg-card-bg overflow-hidden;
+  }
+
+  .login-brand-panel {
+    @apply flex-1 relative hidden lg:flex flex-col justify-end p-20 text-white overflow-hidden;
+    background: url('/assets/images/building.jpg') center/cover no-repeat;
+  }
+
+  .login-brand-panel::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-t from-navy to-transparent opacity-90;
+  }
+
+  .login-form-panel {
+    @apply flex-1 flex items-center justify-center p-8 bg-card-bg overflow-y-auto;
+  }
+
+  .btn-primary {
+    @apply bg-navy text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl shadow-navy/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3;
+  }
+
+  .glass-card {
+    @apply bg-card-bg/80 backdrop-blur-md border border-white/5 shadow-sm;
+  }
+
+  .card-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-navy/5;
+  }
+
+  .glow-icon {
+    @apply relative after:absolute after:inset-0 after:rounded-full after:blur-xl after:opacity-0 group-hover:after:opacity-40 transition-all;
+  }
+
+  .stat-glow-indigo {
+    @apply after:bg-indigo-400;
+  }
+
+  .stat-glow-amber {
+    @apply after:bg-amber-400;
+  }
+
+  .stat-glow-emerald {
+    @apply after:bg-emerald-400;
+  }
+
+  .stat-glow-rose {
+    @apply after:bg-rose-400;
+  }
+
+  .stat-glow-blue {
+    @apply after:bg-blue-400;
+  }
+}
+
+/* Custom Scrollbar for Premium Feel */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+}
