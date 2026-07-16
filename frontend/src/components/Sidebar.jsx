@@ -24,6 +24,7 @@ const ADMIN_NAV = [
   { icon: LayoutDashboard, label: 'Dashboard', to: '/admin/dashboard' },
   { icon: Briefcase, label: 'Staff Management', to: '/admin/staff' },
   { icon: MapPin, label: 'District Management', to: '/admin/districts' },
+  { icon: Building2, label: 'Building Types', to: '/admin/building-types' },
   { icon: ClipboardList, label: 'Applicant Management', to: '/admin/applicants' },
   { icon: Shield, label: 'Inspector Management', to: '/admin/inspectors' },
   { icon: FileText, label: 'All Applications', to: '/admin/all-permits' },

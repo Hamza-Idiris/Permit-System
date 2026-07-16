@@ -35,8 +35,11 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
     'Heliwa', 'Kaxda', 'Daru-Salam'
   ];
 
+  List<dynamic> _dynamicBuildingTypes = [];
+  bool _isLoadingBuildingTypes = true;
+
   final List<String> _plotSizes = ['Rubac (10x10)', 'Nus (10x20)', 'Boos (20x20)', '2 Boos (20x40)', 'Custom'];
-  final List<String> _buildingTypes = ['Jiingad', 'Villa (Dhagax)', 'Villa (Bulukeeti)', 'Dabaq'];
+  List<String> _buildingTypes = [];
 
   String? _selectedDistrict;
   String? _selectedPlotSize;
@@ -73,11 +76,6 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
       _customLengthController.text = '1';
     }
 
-    final category = formData['buildingCategory']?.toString() ?? '';
-    if (_buildingTypes.contains(category)) {
-      _selectedBuildingType = category;
-    }
-
     final floors = formData['floors']?.toString() ?? '1';
     _floorsController.text = floors;
 
@@ -88,6 +86,33 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
     _plotIdController.addListener(() => setState(() {}));
     
     _fetchDistricts();
+    _fetchBuildingTypes();
+  }
+
+  Future<void> _fetchBuildingTypes() async {
+    try {
+      final result = await _permitService.getBuildingTypes();
+      if (result['success'] && mounted) {
+        setState(() {
+          _dynamicBuildingTypes = result['data'];
+          _buildingTypes = _dynamicBuildingTypes.map((b) => b['name'].toString()).toList();
+          _isLoadingBuildingTypes = false;
+
+          // Set initial building type correctly if it's in the fetched list
+          final category = widget.permit['formData']?['buildingCategory']?.toString() ?? '';
+          if (_buildingTypes.contains(category)) {
+            _selectedBuildingType = category;
+            _calculateFee();
+          }
+        });
+      } else if (mounted) {
+        setState(() {
+          _isLoadingBuildingTypes = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingBuildingTypes = false);
+    }
   }
 
   Future<void> _fetchDistricts() async {
@@ -124,14 +149,20 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
     int floors = int.tryParse(_floorsController.text) ?? 1;
     if (floors < 1) floors = 1;
 
-    final String bType = _selectedBuildingType?.toLowerCase() ?? '';
+    final selectedTypeObj = _dynamicBuildingTypes.firstWhere(
+      (b) => b['name'] == _selectedBuildingType,
+      orElse: () => null,
+    );
 
-    if (bType.contains('jiingad') || bType.contains('bulukeeti')) {
-      fee = area * 0.50;
-    } else if (bType.contains('dhagax')) {
-      fee = area * 0.60;
-    } else if (bType.contains('dabaq')) {
-      fee = area * 2.50 * floors;
+    if (selectedTypeObj != null) {
+      double multiplier = (selectedTypeObj['feeMultiplier'] ?? 0).toDouble();
+      bool isPerFloor = selectedTypeObj['isPerFloor'] ?? false;
+
+      if (isPerFloor) {
+        fee = area * multiplier * floors;
+      } else {
+        fee = area * multiplier;
+      }
     }
 
     if (mounted) {
@@ -157,9 +188,16 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
   bool _isFormValid() {
     if (_plotIdController.text.isEmpty || _selectedDistrict == null ||
         _selectedPlotSize == null || _selectedBuildingType == null) return false;
+        
+    final selectedTypeObj = _dynamicBuildingTypes.firstWhere(
+      (b) => b['name'] == _selectedBuildingType,
+      orElse: () => null,
+    );
+    bool isPerFloor = selectedTypeObj != null ? (selectedTypeObj['isPerFloor'] ?? false) : false;
+
     if (_selectedPlotSize == 'Custom' &&
         (_customWidthController.text.isEmpty || _customLengthController.text.isEmpty)) return false;
-    if (_selectedBuildingType == 'Dabaq' && _floorsController.text.isEmpty) return false;
+    if (isPerFloor && _floorsController.text.isEmpty) return false;
     return true;
   }
 
@@ -488,6 +526,9 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
 
     final formData = widget.permit['formData'] ?? {};
 
+    final selectedTypeObj = _dynamicBuildingTypes.firstWhere((b) => b['name'] == _selectedBuildingType, orElse: () => null);
+    bool isPerFloor = selectedTypeObj != null ? (selectedTypeObj['isPerFloor'] ?? false) : false;
+
     final result = await _permitService.updateApplication(
       applicationId: widget.permit['_id'],
       fullName: formData['fullName']?.toString() ?? '',
@@ -496,7 +537,7 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
       plotId: _plotIdController.text,
       district: _selectedDistrict!,
       buildingCategory: _selectedBuildingType!,
-      floors: _selectedBuildingType == 'Dabaq' ? _floorsController.text : '1',
+      floors: isPerFloor ? _floorsController.text : '1',
       landArea: _calculatedArea.toString(),
       totalFee: _totalFee.toString(),
       nationalIdBytes: _passportBytes,
@@ -657,13 +698,20 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
             ],
 
             const SizedBox(height: 15),
-            _buildDropdown('Building Type', _buildingTypes, _selectedBuildingType,
+            _buildDropdown('Building Type', _isLoadingBuildingTypes ? ['Loading...'] : _buildingTypes, _selectedBuildingType,
                 (val) => setState(() { _selectedBuildingType = val; _calculateFee(); })),
 
-            if (_selectedBuildingType == 'Dabaq') ...[
-              const SizedBox(height: 15),
-              _buildTextField('Number of Floors', _floorsController, 'e.g. 3', isNumber: true),
-            ],
+            ...() {
+              final selectedTypeObj = _dynamicBuildingTypes.firstWhere((b) => b['name'] == _selectedBuildingType, orElse: () => null);
+              bool isPerFloor = selectedTypeObj != null ? (selectedTypeObj['isPerFloor'] ?? false) : false;
+              if (isPerFloor) {
+                return [
+                  const SizedBox(height: 15),
+                  _buildTextField('Number of Floors', _floorsController, 'e.g. 3', isNumber: true),
+                ];
+              }
+              return <Widget>[];
+            }(),
 
             const SizedBox(height: 24),
 

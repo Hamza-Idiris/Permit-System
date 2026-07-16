@@ -270,6 +270,30 @@ class PermitService {
     }
   }
 
+  Future<Map<String, dynamic>> getBuildingTypes() async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) return {'success': false, 'message': 'No authentication token found'};
+
+      final response = await http.get(
+        Uri.parse('${Constants.apiBaseUrl}/building-types'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data['data']};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Failed to fetch building types'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'An error occurred: $e'};
+    }
+  }
+
   Future<Map<String, dynamic>> processPayment({
     required String phone,
     required double amount,

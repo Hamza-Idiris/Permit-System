@@ -12,6 +12,7 @@ import StaffReview from './pages/StaffReview';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import UserManagement from './pages/UserManagement';
 import DistrictManagement from './pages/DistrictManagement';
+import BuildingTypesManagement from './pages/BuildingTypesManagement';
 import AllApplications from './pages/AllApplications';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
@@ -81,6 +82,11 @@ function App() {
             <Route path="/admin/districts" element={
               <ProtectedRoute allowedRoles={['superadmin']}>
                 <DistrictManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/building-types" element={
+              <ProtectedRoute allowedRoles={['superadmin']}>
+                <BuildingTypesManagement />
               </ProtectedRoute>
             } />
             <Route path="/admin/applicants" element={

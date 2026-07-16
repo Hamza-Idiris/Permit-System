@@ -26,6 +26,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const districtRoutes = require('./routes/districtRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const buildingTypeRoutes = require('./routes/buildingTypeRoutes');
 const path = require('path');
 
 const fs = require('fs');
@@ -38,6 +39,7 @@ app.use('/api/permits', permitRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/building-types', buildingTypeRoutes);
 
 // App proxy for PDF blob bypass (Evades IDM entirely)
 app.get('/api/stream-pdf', (req, res) => {
