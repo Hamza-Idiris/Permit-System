@@ -299,7 +299,7 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
   }
 
   void _showPaymentModal(double diffAmount) {
-    final TextEditingController pinController = TextEditingController();
+    final TextEditingController phoneController = TextEditingController();
     bool isProcessing = false;
 
     showGeneralDialog(
@@ -346,23 +346,45 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ColorPallete.primaryNavy),
                         ),
                         const SizedBox(height: 25),
-                        const Text('Gali PIN-kaaga (4-digits):', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 25),
+                        const Text('Enter Phone Number:', style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 10),
-                        TextField(
-                          controller: pinController,
-                          keyboardType: TextInputType.number,
-                          obscureText: true,
-                          maxLength: 4,
-                          textAlign: TextAlign.center,
-                          autofocus: true,
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 8),
-                          decoration: InputDecoration(
-                            counterText: "",
-                            fillColor: Colors.grey.shade100,
-                            filled: true,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text('+252', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: phoneController,
+                                keyboardType: TextInputType.phone,
+                                maxLength: 9,
+                                onChanged: (value) => setModalState(() {}),
+                                autofocus: true,
+                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2),
+                                decoration: InputDecoration(
+                                  hintText: '61XXXXXXX',
+                                  counterText: "",
+                                  fillColor: Colors.grey.shade100,
+                                  filled: true,
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: 10),
+                        if (phoneController.text.startsWith('61'))
+                          Text('Hormuud Telecom', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16))
+                        else if (phoneController.text.startsWith('62'))
+                          Text('Somtel Network', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 16)),
                         const SizedBox(height: 25),
                         Row(
                           children: [
@@ -379,9 +401,55 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                 ),
                                 onPressed: () async {
-                                  if (pinController.text.length < 4) return;
+                                  if (phoneController.text.length < 7) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid phone number')));
+                                    return;
+                                  }
                                   setModalState(() => isProcessing = true);
-                                  await Future.delayed(const Duration(seconds: 2));
+                                  
+                                  final paymentResult = await _permitService.processPayment(
+                                    phone: phoneController.text,
+                                    amount: diffAmount,
+                                  );
+
+                                  if (!paymentResult['success']) {
+                                    setModalState(() => isProcessing = false);
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => Dialog(
+                                        backgroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(24.0),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 60),
+                                              const SizedBox(height: 16),
+                                              const Text('Payment Failed', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: ColorPallete.primaryNavy)),
+                                              const SizedBox(height: 12),
+                                              Text(paymentResult['message'], textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade700, fontSize: 16)),
+                                              const SizedBox(height: 24),
+                                              SizedBox(
+                                                width: double.infinity,
+                                                child: ElevatedButton(
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: ColorPallete.primaryNavy,
+                                                    foregroundColor: Colors.white,
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                  ),
+                                                  onPressed: () => Navigator.pop(ctx),
+                                                  child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
                                   Navigator.pop(context);
                                   _processSubmission();
                                 },

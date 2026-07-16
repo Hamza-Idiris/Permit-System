@@ -269,4 +269,36 @@ class PermitService {
       return {'success': false, 'message': 'An error occurred: $e'};
     }
   }
+
+  Future<Map<String, dynamic>> processPayment({
+    required String phone,
+    required double amount,
+  }) async {
+    try {
+      final token = await _storage.read(key: 'token');
+      // Even if no token, we might allow it if it's a public endpoint, but we pass it anyway.
+      
+      final response = await http.post(
+        Uri.parse('${Constants.apiBaseUrl}/payment/waafi'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'phone': phone,
+          'amount': amount,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message'], 'data': data['data']};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Payment failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'An error occurred: $e'};
+    }
+  }
 }

@@ -211,7 +211,7 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
 
   void _showPaymentModal() {
     final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
-    final TextEditingController pinController = TextEditingController();
+    final TextEditingController phoneController = TextEditingController();
     bool isProcessing = false;
 
     showModalBottomSheet(
@@ -238,32 +238,52 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                   const SizedBox(height: 24),
                   const Text('Processing Payment...', style: TextStyle(fontWeight: FontWeight.bold)),
                 ] else ...[
-                  Image.network(
-                    'https://logo.u-gov.so/evc-plus-logo.png', // Temporary placeholder for EVC Logo
-                    height: 50,
-                    errorBuilder: (_,__,___) => const Icon(Icons.account_balance_wallet, size: 50, color: Colors.green),
+                  Icon(
+                    phoneController.text.startsWith('61') ? Icons.phone_android : (phoneController.text.startsWith('62') ? Icons.cell_wifi : Icons.account_balance_wallet),
+                    size: 50,
+                    color: phoneController.text.startsWith('61') ? Colors.green : (phoneController.text.startsWith('62') ? Colors.blue : ColorPallete.primaryNavy),
                   ),
                   const SizedBox(height: 20),
                   Text('\$${_totalFee.toStringAsFixed(2)}', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: isDark ? Colors.white : ColorPallete.primaryNavy)),
                   const SizedBox(height: 5),
                   Text('Confirming to Mogadishu Local Gov', style: TextStyle(color: isDark ? Colors.white38 : ColorPallete.hintTextColor, fontSize: 13, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 30),
-                  TextField(
-                    controller: pinController,
-                    keyboardType: TextInputType.number,
-                    obscureText: true,
-                    maxLength: 4,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 24, letterSpacing: 20, color: isDark ? Colors.white : Colors.black),
-                    decoration: InputDecoration(
-                      hintText: 'PIN',
-                      hintStyle: TextStyle(fontSize: 16, letterSpacing: 0, color: isDark ? Colors.white24 : Colors.grey),
-                      counterText: "",
-                      filled: true,
-                      fillColor: isDark ? Colors.black26 : Colors.grey.shade100,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.black26 : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text('+252', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: phoneController,
+                          keyboardType: TextInputType.phone,
+                          maxLength: 9,
+                          onChanged: (value) => setModalState(() {}),
+                          style: TextStyle(fontSize: 20, letterSpacing: 2, color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
+                          decoration: InputDecoration(
+                            hintText: '61XXXXXXX',
+                            hintStyle: TextStyle(fontSize: 16, letterSpacing: 0, color: isDark ? Colors.white24 : Colors.grey),
+                            counterText: "",
+                            filled: true,
+                            fillColor: isDark ? Colors.black26 : Colors.grey.shade100,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 10),
+                  if (phoneController.text.startsWith('61'))
+                    Text('Hormuud Telecom', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16))
+                  else if (phoneController.text.startsWith('62'))
+                    Text('Somtel Network', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 30),
                   SizedBox(
                     width: double.infinity,
@@ -275,10 +295,55 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       onPressed: () async {
-                        if (pinController.text.length < 4) return;
+                        if (phoneController.text.length < 7) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid phone number (at least 7 digits)')));
+                          return;
+                        }
                         setModalState(() => isProcessing = true);
-                        await Future.delayed(const Duration(seconds: 2));
                         
+                        final paymentResult = await _permitService.processPayment(
+                          phone: phoneController.text,
+                          amount: _totalFee,
+                        );
+
+                        if (!paymentResult['success']) {
+                          setModalState(() => isProcessing = false);
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => Dialog(
+                              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                              child: Padding(
+                                padding: const EdgeInsets.all(24.0),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 60),
+                                    const SizedBox(height: 16),
+                                    Text('Payment Failed', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : ColorPallete.primaryNavy)),
+                                    const SizedBox(height: 12),
+                                    Text(paymentResult['message'], textAlign: TextAlign.center, style: TextStyle(color: isDark ? Colors.white70 : Colors.grey.shade700, fontSize: 16)),
+                                    const SizedBox(height: 24),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: ColorPallete.primaryNavy,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
                         const storage = FlutterSecureStorage();
                         final String storedName = await storage.read(key: 'fullName') ?? 'Official Member';
                         final String storedPhone = await storage.read(key: 'phone') ?? '061XXXXXXX';
@@ -297,7 +362,9 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                         if (mounted) Navigator.pop(context);
                         if (result['success']) {
                           _showSuccessAnimation();
-                          _showNotification('Permit Applied!', 'Application Ref: ${_plotIdController.text}');
+                          _showNotification('Permit Applied!', 'Application Ref: ${_plotIdController.text}. Please authorize on phone.');
+                        } else {
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']), backgroundColor: Colors.red));
                         }
                       },
                       child: const Text('AUTHORIZE PAYMENT', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
