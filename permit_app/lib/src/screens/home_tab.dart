@@ -1,121 +1,150 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permit_app/src/utils/constants.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:permit_app/src/screens/permit_detail_screen.dart';
+import 'package:permit_app/src/screens/scanned_permits_list_screen.dart';
+import 'package:permit_app/src/services/scan_history_service.dart';
+import 'package:permit_app/src/screens/profile_tab.dart';
+import 'package:permit_app/src/screens/staff_notifications_screen.dart';
+import 'package:permit_app/src/providers/auth_provider.dart';
+import 'package:permit_app/src/screens/login_page.dart';
 
 class HomeTab extends StatefulWidget {
   final VoidCallback onScanTap;
   const HomeTab({super.key, required this.onScanTap});
 
   @override
-  State<HomeTab> createState() => _HomeTabState();
+  State<HomeTab> createState() => HomeTabState();
 }
 
-class _HomeTabState extends State<HomeTab> {
+class HomeTabState extends State<HomeTab> {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final ScanHistoryService _scanService = ScanHistoryService();
   
   bool _isLoading = true;
   String _fullName = "Sarkaalka";
-  String _errorMessage = "";
-
-  int _totalPermits = 0;
-  int _approvedPermits = 0;
-  List<dynamic> _recentPermits = [];
+  
+  List<Map<String, dynamic>> _currentMonthScans = [];
+  int _totalScans = 0;
+  int _successScans = 0;
+  int _failedScans = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> loadData() async {
     try {
       final name = await _storage.read(key: 'fullName');
       if (name != null && name.isNotEmpty) {
         _fullName = name.split(' ').first;
       }
 
-      final token = await _storage.read(key: 'token');
-      if (token == null) throw Exception("No token found");
-
-      final response = await http.get(
-        Uri.parse('${Constants.apiBaseUrl}/permits/all'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          if (mounted) {
-            setState(() {
-              _totalPermits = data['stats']['total'] ?? 0;
-              _approvedPermits = data['stats']['approved'] ?? 0;
-              _recentPermits = data['data'] ?? [];
-              _isLoading = false;
-            });
-          }
+      final scans = await _scanService.getCurrentMonthScans();
+      
+      int success = 0;
+      int failed = 0;
+      for (var scan in scans) {
+        if (scan['status'] == 'success') {
+          success++;
         } else {
-          throw Exception("Failed to load");
+          failed++;
         }
-      } else {
-        throw Exception("Server Error");
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentMonthScans = scans;
+          _totalScans = scans.length;
+          _successScans = success;
+          _failedScans = failed;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = "Internet connection lost.";
           _isLoading = false;
         });
       }
     }
   }
 
-  double _getSuccessRate() {
-    if (_totalPermits == 0) return 0;
-    return (_approvedPermits / _totalPermits) * 100;
+  void _logout() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.logout();
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+      );
+    }
+  }
+
+  void _navigateToScans(String title, List<Map<String, dynamic>> permits, Color color) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ScannedPermitsListScreen(
+          title: title,
+          permits: permits,
+          themeColor: color,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: ColorPallete.primaryNavy));
-    }
-
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
-    final primaryColor = isDark ? Colors.white : ColorPallete.primaryNavy;
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: isDark ? ColorPallete.darkBackgroundColor : ColorPallete.backgroundColor,
+        body: const Center(child: CircularProgressIndicator(color: ColorPallete.primaryNavy))
+      );
+    }
 
     return Scaffold(
       backgroundColor: isDark ? ColorPallete.darkBackgroundColor : ColorPallete.backgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(isDark),
-              const SizedBox(height: 32),
-              _buildWelcomeSection(isDark),
-              const SizedBox(height: 32),
-              _buildQuickActionCard(isDark),
-              const SizedBox(height: 32),
-              _buildStatsStats(isDark),
-              const SizedBox(height: 32),
-              _buildRecentActivityHeader(isDark),
-              const SizedBox(height: 16),
-              if (_recentPermits.isEmpty)
-                _buildEmptyState(isDark)
-              else
-                ..._recentPermits.take(5).map((p) => _buildPermitCard(p, isDark)),
-              const SizedBox(height: 24),
-            ],
+        child: RefreshIndicator(
+          onRefresh: loadData,
+          color: ColorPallete.primaryNavy,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(isDark),
+                const SizedBox(height: 32),
+                _buildWelcomeSection(isDark),
+                const SizedBox(height: 32),
+                _buildQuickActionCard(isDark),
+                const SizedBox(height: 32),
+                Text(
+                  'CURRENT MONTH SCANS',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : ColorPallete.hintTextColor, letterSpacing: 1)
+                ),
+                const SizedBox(height: 16),
+                _buildSummaryCards(isDark),
+                const SizedBox(height: 32),
+                _buildRecentActivityHeader(isDark),
+                const SizedBox(height: 16),
+                if (_currentMonthScans.isEmpty)
+                  _buildEmptyState(isDark)
+                else
+                  ..._currentMonthScans.take(5).map((p) => _buildScanCard(p, isDark)),
+                const SizedBox(height: 80), // Padding for FAB
+              ],
+            ),
           ),
         ),
       ),
@@ -146,13 +175,36 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ],
         ),
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.05) : ColorPallete.primaryNavy.withOpacity(0.05),
-            shape: BoxShape.circle
-          ),
-          child: Icon(Icons.notifications_none_rounded, color: isDark ? Colors.white70 : ColorPallete.primaryNavy),
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const StaffNotificationsScreen()));
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.05) : ColorPallete.primaryNavy.withOpacity(0.05),
+                  shape: BoxShape.circle
+                ),
+                child: Icon(Icons.notifications_none_rounded, color: isDark ? Colors.white70 : ColorPallete.primaryNavy),
+              ),
+            ),
+            const SizedBox(width: 12),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => ProfileTab(onLogout: _logout)));
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.05) : ColorPallete.primaryNavy.withOpacity(0.05),
+                  shape: BoxShape.circle
+                ),
+                child: Icon(Icons.person_rounded, color: isDark ? Colors.white70 : ColorPallete.primaryNavy),
+              ),
+            ),
+          ],
         )
       ],
     );
@@ -242,53 +294,75 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _buildStatsStats(bool isDark) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatItem(
-            'TOTAL AUDITS',
-            _totalPermits.toString(),
+  Widget _buildSummaryCards(bool isDark) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          _buildStatCard(
+            'TOTAL SCANS',
+            _totalScans.toString(),
             Icons.assessment_rounded,
             const Color(0xFF3B82F6),
-            isDark
+            isDark,
+            () => _navigateToScans('Total Scans', _currentMonthScans, const Color(0xFF3B82F6)),
           ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildStatItem(
-            'APPROVAL RATE',
-            '${_getSuccessRate().toStringAsFixed(0)}%',
+          const SizedBox(width: 16),
+          _buildStatCard(
+            'SUCCESS',
+            _successScans.toString(),
             Icons.verified_user_rounded,
             const Color(0xFF10B981),
-            isDark
+            isDark,
+            () => _navigateToScans('Successful Scans', _currentMonthScans.where((s) => s['status'] == 'success').toList(), const Color(0xFF10B981)),
           ),
-        ),
-      ],
+          const SizedBox(width: 16),
+          _buildStatCard(
+            'FAILED',
+            _failedScans.toString(),
+            Icons.gpp_bad_rounded,
+            const Color(0xFFEF4444),
+            isDark,
+            () => _navigateToScans('Failed Scans', _currentMonthScans.where((s) => s['status'] == 'failed').toList(), const Color(0xFFEF4444)),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildStatItem(String label, String val, IconData icon, Color color, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, size: 20, color: color),
-          ),
-          const SizedBox(height: 16),
-          Text(val, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: isDark ? Colors.white : ColorPallete.primaryNavy)),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : ColorPallete.hintTextColor, letterSpacing: 1)),
-        ],
+  Widget _buildStatCard(String label, String val, IconData icon, Color color, bool isDark, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 140,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            )
+          ]
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              child: Icon(icon, size: 20, color: color),
+            ),
+            const SizedBox(height: 16),
+            Text(val, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: isDark ? Colors.white : ColorPallete.primaryNavy)),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : ColorPallete.hintTextColor, letterSpacing: 1)),
+          ],
+        ),
       ),
     );
   }
@@ -298,7 +372,10 @@ class _HomeTabState extends State<HomeTab> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text('RECENT LOGS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : ColorPallete.hintTextColor, letterSpacing: 1)),
-        Text('VIEW ALL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isDark ? Colors.white54 : ColorPallete.primaryNavy, letterSpacing: 1)),
+        GestureDetector(
+          onTap: () => _navigateToScans('All Scans', _currentMonthScans, ColorPallete.primaryNavy),
+          child: Text('VIEW ALL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isDark ? Colors.white54 : ColorPallete.primaryNavy, letterSpacing: 1)),
+        ),
       ],
     );
   }
@@ -318,19 +395,16 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _buildPermitCard(dynamic permit, bool isDark) {
-    String status = permit['status'] ?? 'Pending';
-    String buildingCategory = permit['formData'] != null ? permit['formData']['buildingCategory'] : 'Construction';
-    String district = permit['district'] ?? 'District';
-    String appId = permit['applicationId'] ?? '#UP-000';
-
-    Color statusColor;
-    switch (status) {
-      case 'Approved': statusColor = const Color(0xFF10B981); break;
-      case 'In Review': case 'Under Review': statusColor = const Color(0xFF3B82F6); break;
-      case 'Returned': case 'Rejected': statusColor = const Color(0xFFEF4444); break;
-      default: statusColor = const Color(0xFFF59E0B); break;
-    }
+  Widget _buildScanCard(Map<String, dynamic> scan, bool isDark) {
+    bool isSuccess = scan['status'] == 'success';
+    String status = isSuccess ? 'Verified' : 'Failed';
+    Color statusColor = isSuccess ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    
+    String permitId = scan['permitId'] ?? '#UP-000';
+    Map<String, dynamic> permitData = scan['permitData'] ?? {};
+    
+    String buildingCategory = permitData['buildingCategory'] ?? permitData['buildingType'] ?? 'Construction';
+    String district = permitData['district'] ?? 'District';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -343,10 +417,12 @@ class _HomeTabState extends State<HomeTab> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => PermitDetailScreen(permit: permit)),
-            );
+            if (isSuccess && permitData.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => PermitDetailScreen(permit: permitData)),
+              );
+            }
           },
           borderRadius: BorderRadius.circular(20),
           child: Padding(
@@ -360,7 +436,10 @@ class _HomeTabState extends State<HomeTab> {
                     color: isDark ? Colors.black26 : Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(Icons.apartment_rounded, color: isDark ? Colors.white24 : ColorPallete.primaryNavy),
+                  child: Icon(
+                    isSuccess ? Icons.apartment_rounded : Icons.warning_rounded, 
+                    color: isDark ? Colors.white24 : ColorPallete.primaryNavy
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -371,7 +450,7 @@ class _HomeTabState extends State<HomeTab> {
                       const SizedBox(height: 2),
                       Row(
                         children: [
-                          Text(appId, style: TextStyle(fontSize: 10, color: isDark ? Colors.white24 : ColorPallete.hintTextColor, fontWeight: FontWeight.bold)),
+                          Text(permitId, style: TextStyle(fontSize: 10, color: isDark ? Colors.white24 : ColorPallete.hintTextColor, fontWeight: FontWeight.bold)),
                           const SizedBox(width: 8),
                           Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
                           const SizedBox(width: 8),
@@ -400,3 +479,4 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 }
+

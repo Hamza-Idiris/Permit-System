@@ -171,6 +171,7 @@ class _ProfileTabState extends State<ProfileTab> {
 
     return Scaffold(
       backgroundColor: scaffoldBg,
+      appBar: Navigator.canPop(context) ? AppBar(backgroundColor: scaffoldBg, elevation: 0) : null,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(

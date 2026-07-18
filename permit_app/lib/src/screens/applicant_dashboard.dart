@@ -519,16 +519,20 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
   }
 
   Widget _buildNotificationsTab() {
+    final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
+    final primaryColor = isDark ? Colors.white : ColorPallete.primaryNavy;
+
     return Scaffold(
-      backgroundColor: ColorPallete.backgroundColor,
+      backgroundColor: isDark ? ColorPallete.darkBackgroundColor : ColorPallete.backgroundColor,
       appBar: AppBar(
-        title: const Text('Notifications', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: ColorPallete.primaryNavy,
+        automaticallyImplyLeading: false,
+        title: Text('Notifications', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : ColorPallete.primaryNavy)),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        foregroundColor: isDark ? Colors.white : ColorPallete.primaryNavy,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded),
+            icon: Icon(Icons.refresh_rounded, color: isDark ? Colors.white70 : ColorPallete.primaryNavy),
             onPressed: () {
               _fetchPermits();
               _fetchNotifications();
@@ -537,17 +541,17 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
         ],
       ),
       body: _isLoadingNotifications
-          ? const Center(child: CircularProgressIndicator(color: ColorPallete.primaryNavy))
+          ? Center(child: CircularProgressIndicator(color: primaryColor))
           : _notifications.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.notifications_none_rounded, size: 80, color: ColorPallete.hintTextColor.withOpacity(0.5)),
+                      Icon(Icons.notifications_none_rounded, size: 80, color: isDark ? Colors.white10 : ColorPallete.hintTextColor.withOpacity(0.5)),
                       const SizedBox(height: 20),
                       Text(
                         'No notifications yet',
-                        style: TextStyle(color: ColorPallete.hintTextColor, fontSize: 16),
+                        style: TextStyle(color: isDark ? Colors.white38 : ColorPallete.hintTextColor, fontSize: 16),
                       ),
                     ],
                   ),
@@ -557,7 +561,7 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                     await _fetchPermits();
                     await _fetchNotifications();
                   },
-                  color: ColorPallete.primaryNavy,
+                  color: primaryColor,
                   child: ListView.builder(
                     padding: const EdgeInsets.all(15),
                     itemCount: _notifications.length,
@@ -569,7 +573,7 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                       final String createdAt = notif['createdAt'] ?? '';
 
                       IconData icon = Icons.info_rounded;
-                      Color color = ColorPallete.primaryNavy;
+                      Color color = isDark ? Colors.white : ColorPallete.primaryNavy;
 
                       if (type == 'Success' || type == 'Approved' || type == 'Applied') {
                         icon = Icons.check_circle_rounded;
@@ -585,11 +589,13 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                           borderRadius: BorderRadius.circular(15),
                           side: isRead 
                               ? BorderSide.none 
-                              : BorderSide(color: ColorPallete.primaryNavy.withOpacity(0.15), width: 1.5),
+                              : BorderSide(color: primaryColor.withOpacity(0.15), width: 1.5),
                         ),
-                        color: isRead ? Colors.white : ColorPallete.primaryNavy.withOpacity(0.02),
+                        color: isDark
+                            ? (isRead ? const Color(0xFF1E1E1E) : const Color(0xFF2D2D2D))
+                            : (isRead ? Colors.white : ColorPallete.primaryNavy.withOpacity(0.02)),
                         elevation: isRead ? 1 : 3,
-                        shadowColor: Colors.black.withOpacity(0.08),
+                        shadowColor: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           leading: Container(
@@ -617,7 +623,7 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                                               : (type == 'Returned' ? 'Action Required / Returned' : (type == 'Rejected' ? 'Permit Request Rejected' : 'System Update')))),
                                   style: TextStyle(
                                     fontWeight: isRead ? FontWeight.bold : FontWeight.w900,
-                                    color: ColorPallete.primaryNavy,
+                                    color: isDark ? Colors.white : ColorPallete.primaryNavy,
                                     fontSize: 15,
                                   ),
                                 ),
@@ -640,7 +646,9 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                               Text(
                                 message,
                                 style: TextStyle(
-                                  color: isRead ? ColorPallete.hintTextColor : Colors.black87,
+                                  color: isDark 
+                                      ? (isRead ? Colors.white38 : Colors.white70)
+                                      : (isRead ? ColorPallete.hintTextColor : Colors.black87),
                                   fontSize: 13.5,
                                   fontWeight: isRead ? FontWeight.normal : FontWeight.w500,
                                 ),
@@ -649,13 +657,13 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                               Text(
                                 _formatRelativeTime(createdAt),
                                 style: TextStyle(
-                                  color: ColorPallete.hintTextColor.withOpacity(0.8),
+                                  color: isDark ? Colors.white24 : ColorPallete.hintTextColor.withOpacity(0.8),
                                   fontSize: 11,
                                 ),
                               ),
                             ],
                           ),
-                          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                          trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: isDark ? Colors.white24 : Colors.grey),
                           onTap: () async {
                             if (!isRead) {
                               await _permitService.markNotificationAsRead(notif['_id']);
