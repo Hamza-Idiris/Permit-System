@@ -86,7 +86,9 @@ mongoose
   .connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/permit-system')
   .then(() => {
     console.log('MongoDB Connected');
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    const { initWebSocket } = require('./services/websocketService');
+    initWebSocket(server);
   })
   .catch((err) => {
     console.error(`Error connecting to MongoDB: ${err.message}`);

@@ -9,6 +9,7 @@ import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:intl/intl.dart';
 import 'package:permit_app/src/services/scan_history_service.dart';
+import 'package:permit_app/src/screens/verified_permit_page.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -38,6 +39,21 @@ class _ScanScreenState extends State<ScanScreen> {
     try {
       final Map<String, dynamic> offlinePayload = jsonDecode(barcodeValue);
       if (offlinePayload.containsKey('permitId') || offlinePayload.containsKey('plotId')) {
+        // If applicantName is a known placeholder, don't trust it — fall
+        // through to the live database lookup which has the real User record.
+        final offlineName = offlinePayload['applicantName']?.toString() ?? '';
+        if (offlineName == 'Official Member' || offlineName.isEmpty) {
+          // Do NOT short-circuit here; let the code continue to the DB lookup.
+          // (only break out if the ID can be derived for the DB call)
+          final lookupId = offlinePayload['permitId']?.toString();
+          if (lookupId != null && lookupId.isNotEmpty) {
+            setState(() { _isProcessing = false; });
+            // Re-enter as a DB lookup using the permitId from the QR payload
+            _processQR(lookupId);
+            return;
+          }
+        }
+
         setState(() {
           _isProcessing = false;
         });
@@ -49,7 +65,12 @@ class _ScanScreenState extends State<ScanScreen> {
           permitData: offlinePayload,
         );
         
-        _showVerifiedPanel(offlinePayload, isOffline: true);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VerifiedPermitPage(permitData: offlinePayload),
+          ),
+        );
         return;
       }
     } catch (_) {
@@ -89,7 +110,21 @@ class _ScanScreenState extends State<ScanScreen> {
           if (status == 'Approved') {
             final Map<String, dynamic> normalizedData = {
               'permitId': permitIdToSave,
-              'applicantName': permit['user']?['fullName'] ?? permit['formData']?['fullName'] ?? 'N/A',
+              'applicantName': (() {
+                // Priority 1: populated user object (real User record)
+                final userObj = permit['user'];
+                if (userObj is Map) {
+                  final n = userObj['fullName']?.toString() ?? '';
+                  if (n.isNotEmpty && n != 'Official Member') return n;
+                }
+                // Priority 2: formData fullName (applicant-entered, may be stale)
+                final fd = permit['formData'];
+                if (fd is Map) {
+                  final n = fd['fullName']?.toString() ?? '';
+                  if (n.isNotEmpty && n != 'Official Member') return n;
+                }
+                return 'N/A';
+              })(),
               'approvedBy': permit['reviewedBy']?['fullName'] ?? 'System',
               'district': permit['district'] ?? 'N/A',
               'plotId': permit['formData']?['plotId'] ?? 'N/A',
@@ -105,8 +140,12 @@ class _ScanScreenState extends State<ScanScreen> {
               isSuccess: true,
               permitData: normalizedData,
             );
-            
-            _showVerifiedPanel(normalizedData, isOffline: false);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => VerifiedPermitPage(permitData: normalizedData),
+              ),
+            );
           } else {
             await _scanHistoryService.saveScan(
               permitId: permitIdToSave,
@@ -161,157 +200,7 @@ class _ScanScreenState extends State<ScanScreen> {
     }
   }
 
-  void _showVerifiedPanel(Map<String, dynamic> data, {required bool isOffline}) {
-    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
-    final String permitId = data['permitId'] ?? 'N/A';
-    final String applicantName = data['applicantName'] ?? 'N/A';
-    final String approvedBy = data['approvedBy'] ?? 'N/A';
-    final String district = data['district'] ?? 'N/A';
-    final String plotId = data['plotId'] ?? 'N/A';
-    final String buildingType = data['buildingType'] ?? 'N/A';
-    final String landArea = data['landArea'] ?? '0 m²';
-    
-    // Floors only if building type is "Dabaq"
-    final bool isDabaq = buildingType.toLowerCase().contains('dabaq');
-    final String floorsText = isDabaq ? (data['floors']?.toString() ?? '1') : '';
 
-    String formattedTime = 'N/A';
-    String formattedExpiry = 'N/A';
-    try {
-      if (data['approvedTime'] != null) {
-        final DateTime dt = DateTime.parse(data['approvedTime'].toString());
-        formattedTime = DateFormat('yyyy-MM-dd HH:mm').format(dt);
-      }
-      if (data['expiryDate'] != null) {
-        final DateTime ext = DateTime.parse(data['expiryDate'].toString());
-        formattedExpiry = DateFormat('yyyy-MM-dd').format(ext);
-      }
-    } catch (_) {
-      formattedTime = data['approvedTime']?.toString() ?? 'N/A';
-      formattedExpiry = data['expiryDate']?.toString() ?? 'N/A';
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.85,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (context, scrollController) {
-            return Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-              ),
-              child: Column(
-                children: [
-                  // Emerald Green Header Banner
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 30),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF10B981), Color(0xFF059669)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-                    ),
-                    child: const Column(
-                      children: [
-                        Icon(Icons.verified_user_rounded, color: Colors.white, size: 60),
-                        SizedBox(height: 12),
-                        Text(
-                          'VERIFIED PERMIT',
-                          style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 1),
-                        ),
-                        Text(
-                          'SOVEREIGN DIGITAL AUTHORITY',
-                          style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  Expanded(
-                    child: SingleChildScrollView(
-                      controller: scrollController,
-                      padding: EdgeInsets.only(
-                        left: 30,
-                        right: 30,
-                        top: 30,
-                        bottom: MediaQuery.of(context).padding.bottom + 16,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: ColorPallete.primaryNavy.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: ColorPallete.primaryNavy.withOpacity(0.1)),
-                              ),
-                              child: Text(
-                                'Permit: $permitId',
-                                style: TextStyle(
-                                  color: isDark ? Colors.white70 : ColorPallete.primaryNavy, 
-                                  fontWeight: FontWeight.w900, 
-                                  fontSize: 14,
-                                  letterSpacing: 0.5
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 30),
-
-                          _buildTelemetryRow(Icons.person_outline_rounded, 'Applicant Name', applicantName, isDark),
-                          _buildTelemetryRow(Icons.admin_panel_settings_rounded, 'Approved By', approvedBy, isDark),
-                          _buildTelemetryRow(Icons.location_on_rounded, 'District Area', district, isDark),
-                          _buildTelemetryRow(Icons.map_rounded, 'Plot Identifier', plotId, isDark),
-                          _buildTelemetryRow(Icons.business_rounded, 'Building Category', buildingType, isDark),
-                          _buildTelemetryRow(Icons.square_foot_rounded, 'Land Area', landArea, isDark),
-
-                          if (isDabaq && floorsText.isNotEmpty) ...[
-                            _buildTelemetryRow(Icons.layers_rounded, 'Building Floors', floorsText, isDark),
-                          ],
-
-                          _buildTelemetryRow(Icons.calendar_month_rounded, 'Approval DateTime', formattedTime, isDark),
-                          _buildTelemetryRow(Icons.event_busy_rounded, 'Expiry Date', formattedExpiry, isDark, color: Colors.redAccent),
-
-                          const SizedBox(height: 25),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 56,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isDark ? Colors.white : ColorPallete.primaryNavy,
-                                foregroundColor: isDark ? Colors.black : Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              ),
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('CONFIRM & DISMISS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   void _showFailedPanel(String message) {
     showModalBottomSheet(
@@ -361,50 +250,7 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  Widget _buildTelemetryRow(IconData icon, String label, String value, bool isDark, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: (color ?? ColorPallete.primaryNavy).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color ?? (isDark ? Colors.white70 : ColorPallete.primaryNavy), size: 20),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label.toUpperCase(), 
-                  style: TextStyle(
-                    color: isDark ? Colors.white38 : ColorPallete.hintTextColor, 
-                    fontSize: 9, 
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1
-                  )
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value, 
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800, 
-                    color: color ?? (isDark ? Colors.white : ColorPallete.primaryNavy), 
-                    fontSize: 15,
-                    letterSpacing: -0.3
-                  )
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {

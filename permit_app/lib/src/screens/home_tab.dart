@@ -2,12 +2,12 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:permit_app/src/utils/constants.dart';
+
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:permit_app/src/screens/permit_detail_screen.dart';
 import 'package:permit_app/src/screens/scanned_permits_list_screen.dart';
+import 'package:permit_app/src/screens/verified_permit_page.dart';
 import 'package:permit_app/src/services/scan_history_service.dart';
 import 'package:permit_app/src/screens/profile_tab.dart';
 import 'package:permit_app/src/screens/staff_notifications_screen.dart';
@@ -126,6 +126,18 @@ class HomeTabState extends State<HomeTab> {
       );
     }
   }
+
+  // ── Navigate to full-screen verified permit page ──────────────────────────
+  void _openVerifiedPermit(Map<String, dynamic> data) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VerifiedPermitPage(permitData: data),
+      ),
+    );
+  }
+
+
 
   void _navigateToScans(String title, List<Map<String, dynamic>> permits, Color color) {
     Navigator.push(
@@ -462,14 +474,9 @@ class HomeTabState extends State<HomeTab> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            if (isSuccess && permitData.isNotEmpty) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => PermitDetailScreen(permit: permitData)),
-              );
-            }
-          },
+          onTap: isSuccess && permitData.isNotEmpty
+              ? () => _openVerifiedPermit(permitData)
+              : null,
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(16),

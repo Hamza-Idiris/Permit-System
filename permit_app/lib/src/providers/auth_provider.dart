@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permit_app/src/utils/constants.dart';
+import 'package:permit_app/src/services/websocket_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
@@ -40,6 +41,9 @@ class AuthProvider extends ChangeNotifier {
           await _storage.write(key: 'phone', value: data['phone'] ?? '+252 61 123 4567');
           await _storage.write(key: 'passwordLastChanged', value: data['passwordLastChanged'] ?? '');
           
+          // Trigger WebSocket connection for live updates
+          WebSocketService().connect();
+
           _isLoading = false;
           notifyListeners();
           return {'success': true, 'role': role};

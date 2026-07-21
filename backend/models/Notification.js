@@ -31,4 +31,16 @@ const notificationSchema = new mongoose.Schema({
   timestamps: true
 });
 
+notificationSchema.post('save', function (doc) {
+  try {
+    const { sendToUser } = require('../services/websocketService');
+    sendToUser(doc.user, {
+      type: 'NOTIFICATION_CREATED',
+      payload: doc
+    });
+  } catch (err) {
+    console.error('WebSocket Notification Broadcast Error:', err);
+  }
+});
+
 module.exports = mongoose.model('Notification', notificationSchema);

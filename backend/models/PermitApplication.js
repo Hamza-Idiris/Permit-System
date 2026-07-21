@@ -79,11 +79,28 @@ const permitApplicationSchema = new mongoose.Schema({
   lastPermitId: {
     type: String
   },
-  lastQrData: {
-    type: String
-  },
+  type: String
+
 }, {
   timestamps: true
+});
+
+permitApplicationSchema.post('save', function (doc) {
+  try {
+    const { sendToUser, broadcastToAll } = require('../services/websocketService');
+    // Notify the specific applicant user
+    sendToUser(doc.user, {
+      type: 'PERMIT_APPLICATION_UPDATED',
+      payload: doc
+    });
+    // Also broadcast to all (web/inspector/staff dashboards can refresh listing live)
+    broadcastToAll({
+      type: 'GLOBAL_PERMIT_APPLICATION_UPDATED',
+      payload: doc
+    });
+  } catch (err) {
+    console.error('WebSocket PermitApplication Broadcast Error:', err);
+  }
 });
 
 module.exports = mongoose.model('PermitApplication', permitApplicationSchema);

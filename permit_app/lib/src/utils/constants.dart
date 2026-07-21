@@ -12,4 +12,14 @@ class Constants {
       return 'http://localhost:5000/api'; // iOS simulator or Desktop
     }
   }
+
+  static String get wsUrl {
+    if (kIsWeb) {
+      return 'ws://localhost:5000/ws';
+    } else if (Platform.isAndroid) {
+      return 'ws://10.0.2.2:5000/ws';
+    } else {
+      return 'ws://localhost:5000/ws';
+    }
+  }
 }
