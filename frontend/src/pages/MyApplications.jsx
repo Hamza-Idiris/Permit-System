@@ -4,7 +4,7 @@ import axios from 'axios';
 import AuthContext from '../context/AuthContext';
 import Sidebar from '../components/Sidebar';
 import {
-  ChevronLeft, ChevronRight, Plus, Menu
+  ChevronLeft, ChevronRight, Plus, Menu, Search
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import TopHeader from '../components/TopHeader';
@@ -19,9 +19,9 @@ const MyApplications = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('All Status');
 
-  const fetchApplications = async () => {
+  const fetchApplications = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const config = { headers: { 'Authorization': `Bearer ${token}` } };
       const res = await axios.get('http://localhost:5000/api/permits/my-applications', config);
       if (res.data.success) {
@@ -30,13 +30,17 @@ const MyApplications = () => {
     } catch (err) {
       console.error('Failed to fetch applications', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     if (token) {
       fetchApplications();
+      const interval = setInterval(() => {
+        fetchApplications(true);
+      }, 15000);
+      return () => clearInterval(interval);
     }
   }, [token]);
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/services/permit_service.dart';
@@ -17,26 +18,59 @@ class _TrackApplicationsScreenState extends State<TrackApplicationsScreen> {
   List<dynamic> _applications = [];
   bool _isLoading = true;
   String _errorMessage = '';
+  Timer? _refreshTimer;
+  bool _isFetching = false;
 
   @override
   void initState() {
     super.initState();
     _fetchApplications();
+    _startRefreshTimer();
   }
 
-  Future<void> _fetchApplications() async {
-    if (!mounted) return;
-    setState(() => _isLoading = true);
-    final result = await _permitService.getMyApplications();
-    if (mounted) {
-      setState(() {
-        if (result['success']) {
-          _applications = result['data'];
-        } else {
-          _errorMessage = result['message'];
-        }
-        _isLoading = false;
-      });
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startRefreshTimer() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _fetchApplications(silent: true);
+    });
+  }
+
+  Future<void> _fetchApplications({bool silent = false}) async {
+    if (!mounted || _isFetching) return;
+    _isFetching = true;
+    if (!silent) {
+      setState(() => _isLoading = true);
+    }
+    
+    try {
+      final result = await _permitService.getMyApplications();
+      if (mounted) {
+        setState(() {
+          if (result['success']) {
+            _applications = result['data'];
+            _errorMessage = '';
+          } else if (!silent) {
+            _errorMessage = result['message'];
+          }
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted && !silent) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+      }
+    } finally {
+      _isFetching = false;
+      if (mounted && !silent) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

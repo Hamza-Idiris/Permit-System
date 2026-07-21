@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:permit_app/src/utils/colors.dart';
@@ -32,18 +33,36 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
   List<dynamic> _notifications = [];
   int _unreadNotificationsCount = 0;
   bool _isLoadingNotifications = false;
+  Timer? _refreshTimer;
+  bool _isFetchingPermits = false;
+  bool _isFetchingNotifications = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
     _fetchPermits();
-    _fetchNotifications();
+    _startRefreshTimer();
   }
 
-  Future<void> _fetchNotifications() async {
-    if (!mounted) return;
-    setState(() => _isLoadingNotifications = true);
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startRefreshTimer() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _fetchPermits(silent: true);
+    });
+  }
+
+  Future<void> _fetchNotifications({bool silent = false}) async {
+    if (!mounted || _isFetchingNotifications) return;
+    _isFetchingNotifications = true;
+    if (!silent) {
+      setState(() => _isLoadingNotifications = true);
+    }
     
     try {
       final result = await _permitService.getNotifications();
@@ -58,15 +77,19 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
     } catch (e) {
       debugPrint('Error fetching notifications: $e');
     } finally {
-      if (mounted) {
+      _isFetchingNotifications = false;
+      if (mounted && !silent) {
         setState(() => _isLoadingNotifications = false);
       }
     }
   }
 
-  Future<void> _fetchPermits() async {
-    if (!mounted) return;
-    setState(() => _isLoadingPermits = true);
+  Future<void> _fetchPermits({bool silent = false}) async {
+    if (!mounted || _isFetchingPermits) return;
+    _isFetchingPermits = true;
+    if (!silent) {
+      setState(() => _isLoadingPermits = true);
+    }
     
     try {
       final result = await _permitService.getMyApplications();
@@ -76,23 +99,24 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
         setState(() {
           _permits = result['data'];
         });
-      } else {
+      } else if (!silent) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result['message'] ?? 'Failed to fetch updates')),
         );
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !silent) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Connection Error: $e')),
         );
       }
     } finally {
-      if (mounted) {
+      _isFetchingPermits = false;
+      if (mounted && !silent) {
         setState(() => _isLoadingPermits = false);
       }
     }
-    _fetchNotifications();
+    _fetchNotifications(silent: silent);
   }
 
   Future<void> _loadUserData() async {

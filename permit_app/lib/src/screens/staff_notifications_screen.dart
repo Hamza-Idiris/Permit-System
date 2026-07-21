@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/services/permit_service.dart';
@@ -16,23 +17,51 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
   final PermitService _permitService = PermitService();
   List<dynamic> _notifications = [];
   bool _isLoading = true;
+  Timer? _refreshTimer;
+  bool _isFetching = false;
 
   @override
   void initState() {
     super.initState();
     _fetchNotifications();
+    _startRefreshTimer();
   }
 
-  Future<void> _fetchNotifications() async {
-    setState(() => _isLoading = true);
-    final result = await _permitService.getNotifications();
-    if (mounted) {
-      if (result['success']) {
-        setState(() {
-          _notifications = result['data'];
-          _isLoading = false;
-        });
-      } else {
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startRefreshTimer() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _fetchNotifications(silent: true);
+    });
+  }
+
+  Future<void> _fetchNotifications({bool silent = false}) async {
+    if (!mounted || _isFetching) return;
+    _isFetching = true;
+    if (!silent) {
+      setState(() => _isLoading = true);
+    }
+    try {
+      final result = await _permitService.getNotifications();
+      if (mounted) {
+        if (result['success']) {
+          setState(() {
+            _notifications = result['data'];
+            _isLoading = false;
+          });
+        } else if (!silent) {
+          setState(() => _isLoading = false);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching notifications: $e');
+    } finally {
+      _isFetching = false;
+      if (mounted && !silent) {
         setState(() => _isLoading = false);
       }
     }
