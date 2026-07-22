@@ -386,9 +386,22 @@ const reviewApplication = async (req, res) => {
         approvedByName = req.user.fullName;
       }
 
+      // Resolve the real applicant name from the User collection so we never
+      // embed the fallback placeholder ('Official Member') into the QR code.
+      let applicantName = application.formData.fullName;
+      try {
+        const UserModel = mongoose.model('User');
+        const applicantUser = await UserModel.findById(application.user);
+        if (applicantUser && applicantUser.fullName) {
+          applicantName = applicantUser.fullName;
+        }
+      } catch (nameErr) {
+        console.error('Could not resolve applicant name from User model:', nameErr);
+      }
+
       const qrPayload = {
         permitId,
-        applicantName: application.formData.fullName,
+        applicantName,
         approvedBy: approvedByName,
         district: application.district,
         plotId: application.formData.plotId,

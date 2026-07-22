@@ -1,17 +1,19 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:permit_app/src/utils/constants.dart';
+
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:permit_app/src/screens/permit_detail_screen.dart';
 import 'package:permit_app/src/screens/scanned_permits_list_screen.dart';
+import 'package:permit_app/src/screens/verified_permit_page.dart';
 import 'package:permit_app/src/services/scan_history_service.dart';
 import 'package:permit_app/src/screens/profile_tab.dart';
 import 'package:permit_app/src/screens/staff_notifications_screen.dart';
 import 'package:permit_app/src/providers/auth_provider.dart';
 import 'package:permit_app/src/screens/login_page.dart';
+import 'package:permit_app/src/services/permit_service.dart';
 
 class HomeTab extends StatefulWidget {
   final VoidCallback onScanTap;
@@ -24,6 +26,7 @@ class HomeTab extends StatefulWidget {
 class HomeTabState extends State<HomeTab> {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   final ScanHistoryService _scanService = ScanHistoryService();
+  final PermitService _permitService = PermitService();
   
   bool _isLoading = true;
   String _fullName = "Sarkaalka";
@@ -32,11 +35,48 @@ class HomeTabState extends State<HomeTab> {
   int _totalScans = 0;
   int _successScans = 0;
   int _failedScans = 0;
+  int _unreadNotificationsCount = 0;
+  Timer? _refreshTimer;
+  bool _isFetchingNotifications = false;
 
   @override
   void initState() {
     super.initState();
     loadData();
+    _fetchNotificationsCount();
+    _startRefreshTimer();
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startRefreshTimer() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (mounted) {
+        loadData();
+        _fetchNotificationsCount();
+      }
+    });
+  }
+
+  Future<void> _fetchNotificationsCount() async {
+    if (!mounted || _isFetchingNotifications) return;
+    _isFetchingNotifications = true;
+    try {
+      final result = await _permitService.getNotifications();
+      if (mounted && result['success']) {
+        setState(() {
+          _unreadNotificationsCount = result['unreadCount'] ?? 0;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching notifications count: $e');
+    } finally {
+      _isFetchingNotifications = false;
+    }
   }
 
   Future<void> loadData() async {
@@ -86,6 +126,18 @@ class HomeTabState extends State<HomeTab> {
       );
     }
   }
+
+  // ── Navigate to full-screen verified permit page ──────────────────────────
+  void _openVerifiedPermit(Map<String, dynamic> data) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VerifiedPermitPage(permitData: data),
+      ),
+    );
+  }
+
+
 
   void _navigateToScans(String title, List<Map<String, dynamic>> permits, Color color) {
     Navigator.push(
@@ -179,15 +231,21 @@ class HomeTabState extends State<HomeTab> {
           children: [
             GestureDetector(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const StaffNotificationsScreen()));
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const StaffNotificationsScreen())).then((_) {
+                  _fetchNotificationsCount();
+                });
               },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withOpacity(0.05) : ColorPallete.primaryNavy.withOpacity(0.05),
-                  shape: BoxShape.circle
+              child: Badge(
+                label: Text('$_unreadNotificationsCount'),
+                isLabelVisible: _unreadNotificationsCount > 0,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withOpacity(0.05) : ColorPallete.primaryNavy.withOpacity(0.05),
+                    shape: BoxShape.circle
+                  ),
+                  child: Icon(Icons.notifications_none_rounded, color: isDark ? Colors.white70 : ColorPallete.primaryNavy),
                 ),
-                child: Icon(Icons.notifications_none_rounded, color: isDark ? Colors.white70 : ColorPallete.primaryNavy),
               ),
             ),
             const SizedBox(width: 12),
@@ -416,14 +474,9 @@ class HomeTabState extends State<HomeTab> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            if (isSuccess && permitData.isNotEmpty) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => PermitDetailScreen(permit: permitData)),
-              );
-            }
-          },
+          onTap: isSuccess && permitData.isNotEmpty
+              ? () => _openVerifiedPermit(permitData)
+              : null,
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(16),
