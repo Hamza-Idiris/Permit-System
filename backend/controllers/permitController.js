@@ -38,23 +38,27 @@ const applyForPermit = async (req, res) => {
       ownershipDocs: `/uploads/${files.ownershipDocs[0].filename}`
     };
 
-    // Calculate totalFee securely
+    // Calculate totalFee securely or use paid totalFee
     let totalFee = 0;
-    const areaNum = Number(landArea) || 0;
-    const floorsNum = Number(floors) || 1;
-
-    // Use a more flexible matching for building categories
-    const category = buildingCategory.toLowerCase();
-
-    if (category.includes('jiingad') || category.includes('bulukeeti')) {
-      totalFee = areaNum * 0.5;
-    } else if (category.includes('dhagax')) {
-      totalFee = areaNum * 0.6;
-    } else if (category.includes('dabaq')) {
-      totalFee = (areaNum * 2.5) * (floorsNum || 1);
+    if (req.body.totalFee !== undefined && req.body.totalFee !== null && !isNaN(Number(req.body.totalFee))) {
+      totalFee = Number(req.body.totalFee);
     } else {
-      // Fallback default calculation if category is unknown but area is present
-      totalFee = areaNum * 0.5;
+      const areaNum = Number(landArea) || 0;
+      const floorsNum = Number(floors) || 1;
+
+      // Use a more flexible matching for building categories
+      const category = buildingCategory.toLowerCase();
+
+      if (category.includes('jiingad') || category.includes('bulukeeti')) {
+        totalFee = areaNum * 0.5;
+      } else if (category.includes('dhagax')) {
+        totalFee = areaNum * 0.6;
+      } else if (category.includes('dabaq')) {
+        totalFee = (areaNum * 2.5) * (floorsNum || 1);
+      } else {
+        // Fallback default calculation if category is unknown but area is present
+        totalFee = areaNum * 0.5;
+      }
     }
 
     const applicationId = await generateApplicationId();

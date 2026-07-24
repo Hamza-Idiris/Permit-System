@@ -61,12 +61,15 @@ const processWaafiPay = async (req, res) => {
           const app = await PermitApplication.findById(applicationId);
           if (app) {
             app.paymentStatus = 'Paid';
+            if (amount && !isNaN(parseFloat(amount))) {
+              app.formData.totalFee = parseFloat(amount);
+            }
             // Unlock application review gate or set pending if needed
             if (app.status === 'Pending') {
               app.status = 'In Review';
             }
             await app.save();
-            console.log(`[PAYMENT-SANDBOX] Application ${applicationId} synced successfully.`);
+            console.log(`[PAYMENT-SANDBOX] Application ${applicationId} synced successfully with totalFee ${amount}.`);
 
             // Trigger automatic notification (optional)
             if (app.user) {
@@ -176,11 +179,14 @@ const processWaafiPay = async (req, res) => {
         const app = await PermitApplication.findById(applicationId);
         if (app) {
           app.paymentStatus = 'Paid';
+          if (amount && !isNaN(parseFloat(amount))) {
+            app.formData.totalFee = parseFloat(amount);
+          }
           if (app.status === 'Pending') {
             app.status = 'In Review';
           }
           await app.save();
-          console.log(`[PAYMENT-LIVE] Application ${applicationId} marked as Paid & In Review.`);
+          console.log(`[PAYMENT-LIVE] Application ${applicationId} marked as Paid & In Review with totalFee ${amount}.`);
         }
       }
 

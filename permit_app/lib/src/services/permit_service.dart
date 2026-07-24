@@ -16,6 +16,7 @@ class PermitService {
     required String buildingCategory,
     required String floors,
     required String landArea,
+    String? totalFee,
     required List<int> nationalIdBytes,
     required String nationalIdName,
     required List<int> ownershipDocsBytes,
@@ -40,6 +41,7 @@ class PermitService {
       request.fields['buildingCategory'] = buildingCategory;
       request.fields['floors'] = floors;
       request.fields['landArea'] = landArea;
+      if (totalFee != null) request.fields['totalFee'] = totalFee;
 
       // Add files using fromBytes
       request.files.add(http.MultipartFile.fromBytes(
@@ -318,7 +320,7 @@ class PermitService {
           if (token != null) 'Authorization': 'Bearer $token',
         },
         body: jsonEncode(bodyMap),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 50));
 
       final data = jsonDecode(response.body);
 
