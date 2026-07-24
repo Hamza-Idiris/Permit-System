@@ -1,0 +1,56 @@
+﻿On branch Anas-update-V2
+Your branch is up to date with 'origin/Anas-update-V2'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   backend/controllers/paymentController.js
+	modified:   backend/server.js
+	modified:   frontend/src/App.jsx
+	modified:   frontend/src/components/Sidebar.jsx
+	modified:   frontend/src/components/TopHeader.jsx
+	modified:   frontend/src/pages/AllApplications.jsx
+	modified:   frontend/src/pages/ApplicantWorkflow.jsx
+	modified:   frontend/src/pages/BuildingTypesManagement.jsx
+	modified:   frontend/src/pages/MyApplications.jsx
+	modified:   frontend/src/pages/Notifications.jsx
+	modified:   frontend/src/pages/StaffDashboard.jsx
+	modified:   frontend/src/pages/StaffNotifications.jsx
+	modified:   permit_app/lib/src/screens/applicant_dashboard.dart
+	modified:   permit_app/lib/src/screens/apply_permit_screen.dart
+	modified:   permit_app/lib/src/screens/home_tab.dart
+	modified:   permit_app/lib/src/screens/staff_notifications_screen.dart
+	modified:   permit_app/lib/src/screens/track_applications_screen.dart
+	modified:   permit_app/lib/src/services/permit_service.dart
+	modified:   permit_app/linux/flutter/generated_plugin_registrant.cc
+	modified:   permit_app/linux/flutter/generated_plugin_registrant.h
+	modified:   permit_app/linux/flutter/generated_plugins.cmake
+	modified:   permit_app/macos/Flutter/GeneratedPluginRegistrant.swift
+	modified:   permit_app/windows/flutter/generated_plugin_registrant.cc
+	modified:   permit_app/windows/flutter/generated_plugin_registrant.h
+	modified:   permit_app/windows/flutter/generated_plugins.cmake
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	backend/controllers/districtBranchController.js
+	backend/models/DistrictBranch.js
+	backend/models/Transaction.js
+	backend/routes/districtBranchRoutes.js
+	backend/uploads/69dff17539354602a17c7269-nationalId-1784855358999.jpg
+	backend/uploads/69dff17539354602a17c7269-nationalId-1784855519155.jpg
+	backend/uploads/69dff17539354602a17c7269-nationalId-1784856399276.jpg
+	backend/uploads/69dff17539354602a17c7269-nationalId-1784857880723.jpg
+	backend/uploads/69dff17539354602a17c7269-nationalId-1784858303337.jpg
+	backend/uploads/69dff17539354602a17c7269-ownershipDocs-1784855359069.pdf
+	backend/uploads/69dff17539354602a17c7269-ownershipDocs-1784855519221.pdf
+	backend/uploads/69dff17539354602a17c7269-ownershipDocs-1784856399361.pdf
+	backend/uploads/69dff17539354602a17c7269-ownershipDocs-1784857880785.pdf
+	backend/uploads/69dff17539354602a17c7269-ownershipDocs-1784858303415.pdf
+	frontend/src/context/WebSocketContext.jsx
+	frontend/src/pages/DistrictBranchesManagement.jsx
+	old_permit_service.dart
+	tmp-payment.js
+	tmp-status.txt
+	wt.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")

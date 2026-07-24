@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AuthContext from '../context/AuthContext';
@@ -7,11 +7,13 @@ import {
   ChevronLeft, ChevronRight, Plus, Menu, Search
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useWebSocket } from '../context/WebSocketContext';
 import TopHeader from '../components/TopHeader';
 
 const MyApplications = () => {
   const navigate = useNavigate();
   const { token } = useContext(AuthContext);
+  const { wsData } = useWebSocket();
   const { darkMode } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -19,7 +21,7 @@ const MyApplications = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('All Status');
 
-  const fetchApplications = async (silent = false) => {
+  const fetchApplications = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
       const config = { headers: { 'Authorization': `Bearer ${token}` } };
@@ -32,17 +34,19 @@ const MyApplications = () => {
     } finally {
       if (!silent) setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (token) {
       fetchApplications();
-      const interval = setInterval(() => {
-        fetchApplications(true);
-      }, 15000);
-      return () => clearInterval(interval);
     }
-  }, [token]);
+  }, [token, fetchApplications]);
+
+  useEffect(() => {
+    if (wsData && (wsData.type === 'PERMIT_APPLICATION_UPDATED' || wsData.type === 'GLOBAL_PERMIT_APPLICATION_UPDATED')) {
+      fetchApplications(true);
+    }
+  }, [wsData, fetchApplications]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +12,7 @@ import ConfigDrawer from '../components/ConfigDrawer';
 import TopHeader from '../components/TopHeader';
 import LoadingScreen from '../components/LoadingScreen';
 import { useTheme } from '../context/ThemeContext';
+import { useWebSocket } from '../context/WebSocketContext';
 
 const statusConfig = {
     Pending: { label: 'PENDING', bg: 'bg-amber-500/10', color: 'text-amber-500', dot: 'bg-amber-500' },
@@ -94,6 +95,7 @@ const ALL_COLUMNS = [
 ];
 const StaffDashboard = () => {
     const { user } = useAuth();
+    const { wsData } = useWebSocket();
     const { darkMode } = useTheme();
     const navigate = useNavigate();
     const [applications, setApplications] = useState([]);
@@ -129,22 +131,30 @@ const StaffDashboard = () => {
         setShowConfigDrawer(false);
     };
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // Fetch applications
-                const appRes = await axios.get('http://localhost:5000/api/permits/all', {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                });
-                setApplications(appRes.data.data);
-                setLoading(false);
-            } catch (err) {
-                console.error('Fetch Data Error:', err);
-                setLoading(false);
-            }
-        };
-        fetchData();
+    const fetchData = useCallback(async () => {
+        try {
+            // Fetch applications
+            const appRes = await axios.get('http://localhost:5000/api/permits/all', {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setApplications(appRes.data.data);
+            setLoading(false);
+        } catch (err) {
+            console.error('Fetch Data Error:', err);
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    useEffect(() => {
+        if (wsData && (wsData.type === 'GLOBAL_PERMIT_APPLICATION_UPDATED' || wsData.type === 'PERMIT_APPLICATION_UPDATED')) {
+            // Re-fetch applications on real-time update
+            fetchData();
+        }
+    }, [wsData, fetchData]);
 
     if (loading) return <LoadingScreen />;
 

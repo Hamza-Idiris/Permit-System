@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Search, Bell, User, Lock, LogOut, ChevronDown, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useWebSocket } from '../context/WebSocketContext';
 import axios from 'axios';
 
 const TopHeader = ({ breadcrumbs = [], searchTerm, setSearchTerm, placeholder = "Search..." }) => {
     const { user, logout } = useAuth();
+    const { wsData } = useWebSocket();
     const { darkMode, toggleDarkMode } = useTheme();
     const navigate = useNavigate();
     const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -15,25 +17,29 @@ const TopHeader = ({ breadcrumbs = [], searchTerm, setSearchTerm, placeholder = 
     const [unreadCount, setUnreadCount] = useState(0);
     const dropdownRef = useRef(null);
 
-    useEffect(() => {
-        const fetchNotifications = async () => {
-            try {
-                const res = await axios.get('http://localhost:5000/api/notifications', {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                });
-                setNotifications(res.data.data);
-                setUnreadCount(res.data.unreadCount);
-            } catch (err) {
-                console.error('Error fetching notifications:', err);
-            }
-        };
+    const fetchNotifications = useCallback(async () => {
+        try {
+            const res = await axios.get('http://localhost:5000/api/notifications', {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setNotifications(res.data.data);
+            setUnreadCount(res.data.unreadCount);
+        } catch (err) {
+            console.error('Error fetching notifications:', err);
+        }
+    }, []);
 
+    useEffect(() => {
         if (user) {
             fetchNotifications();
-            const interval = setInterval(fetchNotifications, 30000); // Pulse every 30s
-            return () => clearInterval(interval);
         }
-    }, [user]);
+    }, [user, fetchNotifications]);
+
+    useEffect(() => {
+        if (wsData && wsData.type === 'NOTIFICATION_CREATED') {
+            fetchNotifications();
+        }
+    }, [wsData, fetchNotifications]);
 
     // Handle click outside to close dropdown
     useEffect(() => {

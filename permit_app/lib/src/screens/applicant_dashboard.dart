@@ -14,6 +14,7 @@ import 'package:permit_app/src/screens/support_screen.dart';
 import 'package:permit_app/src/screens/transaction_history_screen.dart';
 import 'package:permit_app/src/screens/permit_detail_screen.dart';
 import 'package:permit_app/src/services/permit_service.dart';
+import 'package:permit_app/src/services/websocket_service.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
 
 class ApplicantDashboard extends StatefulWidget {
@@ -42,20 +43,25 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
     super.initState();
     _loadUserData();
     _fetchPermits();
-    _startRefreshTimer();
+    WebSocketService().addListener(_onWebSocketMessage);
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    WebSocketService().removeListener(_onWebSocketMessage);
     super.dispose();
   }
 
-  void _startRefreshTimer() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+  void _onWebSocketMessage(Map<String, dynamic> data) {
+    if (data['type'] == 'NOTIFICATION_CREATED') {
+      _fetchNotifications(silent: true);
+    } else if (data['type'] == 'PERMIT_APPLICATION_UPDATED' || 
+               data['type'] == 'GLOBAL_PERMIT_APPLICATION_UPDATED') {
       _fetchPermits(silent: true);
-    });
+    }
   }
+
+
 
   Future<void> _fetchNotifications({bool silent = false}) async {
     if (!mounted || _isFetchingNotifications) return;
