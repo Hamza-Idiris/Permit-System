@@ -14,6 +14,7 @@ import 'package:permit_app/src/screens/staff_notifications_screen.dart';
 import 'package:permit_app/src/providers/auth_provider.dart';
 import 'package:permit_app/src/screens/login_page.dart';
 import 'package:permit_app/src/services/permit_service.dart';
+import 'package:permit_app/src/services/websocket_service.dart';
 
 class HomeTab extends StatefulWidget {
   final VoidCallback onScanTap;
@@ -44,22 +45,19 @@ class HomeTabState extends State<HomeTab> {
     super.initState();
     loadData();
     _fetchNotificationsCount();
-    _startRefreshTimer();
+    WebSocketService().addListener(_onWebSocketMessage);
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    WebSocketService().removeListener(_onWebSocketMessage);
     super.dispose();
   }
 
-  void _startRefreshTimer() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (mounted) {
-        loadData();
-        _fetchNotificationsCount();
-      }
-    });
+  void _onWebSocketMessage(Map<String, dynamic> data) {
+    if (data['type'] == 'NOTIFICATION_CREATED') {
+      _fetchNotificationsCount();
+    }
   }
 
   Future<void> _fetchNotificationsCount() async {

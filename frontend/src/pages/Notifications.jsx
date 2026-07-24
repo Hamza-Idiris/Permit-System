@@ -2,6 +2,8 @@ import { useState, useContext, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import Sidebar from '../components/Sidebar';
 import { useTheme } from '../context/ThemeContext';
+import { useWebSocket } from '../context/WebSocketContext';
+import { useAuth } from '../context/AuthContext';
 import {
   Bell, Menu, Search, Clock, CheckCircle2,
   XCircle, RefreshCw, Trash2, ChevronDown
@@ -9,7 +11,6 @@ import {
 
 const API = 'http://localhost:5000/api/notifications';
 const PAGE_SIZE = 10;
-const POLL_INTERVAL = 15000; // 15 s live update
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -74,7 +75,8 @@ function NotifIcon({ type }) {
 // ── main component ────────────────────────────────────────────────────────────
 
 const Notifications = () => {
-  const { token } = useContext(AuthContext);
+  const { token } = useAuth();
+  const { wsData } = useWebSocket();
   const { darkMode } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -117,11 +119,12 @@ const Notifications = () => {
   // first load
   useEffect(() => { fetchFresh(); }, [fetchFresh]);
 
-  // live polling – silently refresh every 15 s
+  // live updates
   useEffect(() => {
-    pollingRef.current = setInterval(() => fetchFresh(true), POLL_INTERVAL);
-    return () => clearInterval(pollingRef.current);
-  }, [fetchFresh]);
+    if (wsData && wsData.type === 'NOTIFICATION_CREATED') {
+      fetchFresh(true);
+    }
+  }, [wsData, fetchFresh]);
 
   // ── load more (older) ───────────────────────────────────────────────────────
   const loadMore = async () => {
@@ -317,7 +320,7 @@ const Notifications = () => {
           {/* Live indicator */}
           <div className="mt-8 flex items-center justify-center gap-2 text-[11px] text-text-muted font-black uppercase tracking-wider transition-colors">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Live updates active · refreshes every 15s
+            Real-time live updates active
           </div>
         </div>
       </main>

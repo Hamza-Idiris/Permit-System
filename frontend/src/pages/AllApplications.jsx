@@ -13,6 +13,7 @@ import ConfigDrawer from '../components/ConfigDrawer';
 import LoadingScreen from '../components/LoadingScreen';
 import TopHeader from '../components/TopHeader';
 import { useTheme } from '../context/ThemeContext';
+import { useWebSocket } from '../context/WebSocketContext';
 
 const ALL_COLUMNS = [
   { id: 'applicationId', label: 'Application ID', mandatory: true },
@@ -86,6 +87,7 @@ const StatCard = ({ icon: Icon, label, value, color, glow, statusKey, isActive, 
 
 const AllApplications = () => {
   const { token, user } = useContext(AuthContext);
+  const { wsData } = useWebSocket();
   const { darkMode } = useTheme();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -169,6 +171,12 @@ const AllApplications = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (wsData && (wsData.type === 'GLOBAL_PERMIT_APPLICATION_UPDATED' || wsData.type === 'PERMIT_APPLICATION_UPDATED')) {
+      fetchData(true); // silent fetch on update
+    }
+  }, [wsData, fetchData]);
 
   const handleAction = async (appId, action, data = {}) => {
     setProcessing(true);

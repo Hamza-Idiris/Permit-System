@@ -4,6 +4,7 @@ import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/services/permit_service.dart';
 import 'package:permit_app/src/screens/permit_detail_screen.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
+import 'package:permit_app/src/services/websocket_service.dart';
 import 'package:provider/provider.dart';
 
 class TrackApplicationsScreen extends StatefulWidget {
@@ -25,19 +26,20 @@ class _TrackApplicationsScreenState extends State<TrackApplicationsScreen> {
   void initState() {
     super.initState();
     _fetchApplications();
-    _startRefreshTimer();
+    WebSocketService().addListener(_onWebSocketMessage);
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    WebSocketService().removeListener(_onWebSocketMessage);
     super.dispose();
   }
 
-  void _startRefreshTimer() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+  void _onWebSocketMessage(Map<String, dynamic> data) {
+    if (data['type'] == 'PERMIT_APPLICATION_UPDATED' || 
+        data['type'] == 'GLOBAL_PERMIT_APPLICATION_UPDATED') {
       _fetchApplications(silent: true);
-    });
+    }
   }
 
   Future<void> _fetchApplications({bool silent = false}) async {

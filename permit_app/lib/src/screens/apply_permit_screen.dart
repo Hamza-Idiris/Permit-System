@@ -349,35 +349,35 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                           showDialog(
                             context: context,
                             builder: (ctx) => Dialog(
-                              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                              child: Padding(
-                                padding: const EdgeInsets.all(24.0),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 60),
-                                    const SizedBox(height: 16),
-                                    Text('Payment Failed', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : ColorPallete.primaryNavy)),
-                                    const SizedBox(height: 12),
-                                    Text(paymentResult['message'], textAlign: TextAlign.center, style: TextStyle(color: isDark ? Colors.white70 : Colors.grey.shade700, fontSize: 16)),
-                                    const SizedBox(height: 24),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: ColorPallete.primaryNavy,
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.error_outline_rounded, color: Colors.amber, size: 60),
+                                      const SizedBox(height: 16),
+                                      Text('Payment Issue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : ColorPallete.primaryNavy)),
+                                      const SizedBox(height: 12),
+                                      Text('Payment failed:\n${paymentResult['message']}', textAlign: TextAlign.center, style: TextStyle(color: isDark ? Colors.white70 : Colors.grey.shade700, fontSize: 14)),
+                                      const SizedBox(height: 24),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: ColorPallete.primaryNavy,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          ),
+                                          onPressed: () => Navigator.pop(ctx),
+                                          child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
                                         ),
-                                        onPressed: () => Navigator.pop(ctx),
-                                        child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
                           );
                           return;
                         }
@@ -390,6 +390,7 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                         final selectedTypeObj = _dynamicBuildingTypes.firstWhere((b) => b['name'] == _selectedBuildingType, orElse: () => null);
                         bool isPerFloor = selectedTypeObj != null ? (selectedTypeObj['isPerFloor'] ?? false) : false;
 
+                        // Submit Application ONLY if Payment Succeeded
                         final result = await _permitService.submitApplication(
                           fullName: storedName, phone: storedPhone, email: storedEmail,
                           plotId: _plotIdController.text, district: _selectedDistrict!,
@@ -403,10 +404,11 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                         if (mounted) Navigator.pop(context);
                         if (result['success']) {
                           _showSuccessAnimation();
-                          _showNotification('Permit Applied!', 'Application Ref: ${_plotIdController.text}. Please authorize on phone.');
+                          _showNotification('Permit Applied!', 'Application Ref: ${_plotIdController.text}. Payment confirmed.');
                         } else {
                           if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']), backgroundColor: Colors.red));
                         }
+
                       },
                       child: const Text('AUTHORIZE PAYMENT', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
                     ),

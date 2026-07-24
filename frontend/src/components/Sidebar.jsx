@@ -14,6 +14,7 @@ import {
   Building2,
   Users,
   Menu,
+  GitBranch,
   X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +25,7 @@ const ADMIN_NAV = [
   { icon: LayoutDashboard, label: 'Dashboard', to: '/admin/dashboard' },
   { icon: Briefcase, label: 'Staff Management', to: '/admin/staff' },
   { icon: MapPin, label: 'District Management', to: '/admin/districts' },
+  { icon: GitBranch, label: 'District Branches', to: '/admin/district-branches' },
   { icon: Building2, label: 'Building Types', to: '/admin/building-types' },
   { icon: ClipboardList, label: 'Applicant Management', to: '/admin/applicants' },
   { icon: Shield, label: 'Inspector Management', to: '/admin/inspectors' },

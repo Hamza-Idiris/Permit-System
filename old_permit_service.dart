@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permit_app/src/utils/constants.dart';
@@ -297,27 +297,21 @@ class PermitService {
   Future<Map<String, dynamic>> processPayment({
     required String phone,
     required double amount,
-    String? applicationId,
-    String? mockStatus,
   }) async {
     try {
       final token = await _storage.read(key: 'token');
       // Even if no token, we might allow it if it's a public endpoint, but we pass it anyway.
       
-      final bodyMap = <String, dynamic>{
-        'phone': phone,
-        'amount': amount,
-      };
-      if (applicationId != null) bodyMap['applicationId'] = applicationId;
-      if (mockStatus != null) bodyMap['mockStatus'] = mockStatus;
-
       final response = await http.post(
         Uri.parse('${Constants.apiBaseUrl}/payment/waafi'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
-        body: jsonEncode(bodyMap),
+        body: jsonEncode({
+          'phone': phone,
+          'amount': amount,
+        }),
       ).timeout(const Duration(seconds: 15));
 
       final data = jsonDecode(response.body);

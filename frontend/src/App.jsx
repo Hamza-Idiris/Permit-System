@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { WebSocketProvider } from './context/WebSocketContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import ApplicantWorkflow from './pages/ApplicantWorkflow';
@@ -12,6 +13,7 @@ import StaffReview from './pages/StaffReview';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import UserManagement from './pages/UserManagement';
 import DistrictManagement from './pages/DistrictManagement';
+import DistrictBranchesManagement from './pages/DistrictBranchesManagement';
 import BuildingTypesManagement from './pages/BuildingTypesManagement';
 import AllApplications from './pages/AllApplications';
 import Reports from './pages/Reports';
@@ -43,126 +45,133 @@ const InspectorScanner = () => (
 function App() {
   return (
     <AuthProvider>
-      <ThemeProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/register" element={<Navigate to="/login" replace />} />
+      <WebSocketProvider>
+        <ThemeProvider>
+          <Router>
+            <Routes>
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/register" element={<Navigate to="/login" replace />} />
 
-            {/* Common Protected Routes ... */}
-            <Route path="/profile" element={
-              <ProtectedRoute allowedRoles={['superadmin', 'staff', 'applicant', 'inspector']}>
-                <Profile />
-              </ProtectedRoute>
-            } />
-            <Route path="/change-password" element={
-              <ProtectedRoute allowedRoles={['superadmin', 'staff', 'applicant', 'inspector']}>
-                <ChangePassword />
-              </ProtectedRoute>
-            } />
+              {/* Common Protected Routes ... */}
+              <Route path="/profile" element={
+                <ProtectedRoute allowedRoles={['superadmin', 'staff', 'applicant', 'inspector']}>
+                  <Profile />
+                </ProtectedRoute>
+              } />
+              <Route path="/change-password" element={
+                <ProtectedRoute allowedRoles={['superadmin', 'staff', 'applicant', 'inspector']}>
+                  <ChangePassword />
+                </ProtectedRoute>
+              } />
 
-            {/* Admin Routes */}
-            <Route path="/admin/dashboard" element={
-              <ProtectedRoute allowedRoles={['superadmin']}>
-                <SuperAdminDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/users" element={
-              <ProtectedRoute allowedRoles={['superadmin']}>
-                <UserManagement />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/staff" element={
-              <ProtectedRoute allowedRoles={['superadmin']}>
-                <UserManagement />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/districts" element={
-              <ProtectedRoute allowedRoles={['superadmin']}>
-                <DistrictManagement />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/building-types" element={
-              <ProtectedRoute allowedRoles={['superadmin']}>
-                <BuildingTypesManagement />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/applicants" element={
-              <ProtectedRoute allowedRoles={['superadmin']}>
-                <UserManagement />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/inspectors" element={
-              <ProtectedRoute allowedRoles={['superadmin']}>
-                <UserManagement />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/all-permits" element={
-              <ProtectedRoute allowedRoles={['superadmin']}>
-                <AllApplications />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/reports" element={
-              <ProtectedRoute allowedRoles={['superadmin']}>
-                <Reports />
-              </ProtectedRoute>
-            } />
+              {/* Admin Routes */}
+              <Route path="/admin/dashboard" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <SuperAdminDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/users" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <UserManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/staff" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <UserManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/districts" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <DistrictManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/district-branches" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <DistrictBranchesManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/building-types" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <BuildingTypesManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/applicants" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <UserManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/inspectors" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <UserManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/all-permits" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <AllApplications />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/reports" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <Reports />
+                </ProtectedRoute>
+              } />
 
-            {/* Staff Routes */}
-            <Route path="/staff/dashboard" element={
-              <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
-                <StaffDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/staff/review/:id" element={
-              <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
-                <StaffReview />
-              </ProtectedRoute>
-            } />
-            <Route path="/staff/approved" element={
-              <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
-                <ApprovedPermits />
-              </ProtectedRoute>
-            } />
-            <Route path="/staff/notifications" element={
-              <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
-                <StaffNotifications />
-              </ProtectedRoute>
-            } />
+              {/* Staff Routes */}
+              <Route path="/staff/dashboard" element={
+                <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
+                  <StaffDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/staff/review/:id" element={
+                <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
+                  <StaffReview />
+                </ProtectedRoute>
+              } />
+              <Route path="/staff/approved" element={
+                <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
+                  <ApprovedPermits />
+                </ProtectedRoute>
+              } />
+              <Route path="/staff/notifications" element={
+                <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
+                  <StaffNotifications />
+                </ProtectedRoute>
+              } />
 
-            {/* Applicant Routes */}
-            <Route path="/applicant/home" element={
-              <ProtectedRoute allowedRoles={['applicant']}>
-                <ApplicantWorkflow />
-              </ProtectedRoute>
-            } />
-            <Route path="/applicant/applications" element={
-              <ProtectedRoute allowedRoles={['applicant']}>
-                <MyApplications />
-              </ProtectedRoute>
-            } />
-            <Route path="/applicant/notifications" element={
-              <ProtectedRoute allowedRoles={['applicant']}>
-                <Notifications />
-              </ProtectedRoute>
-            } />
-            <Route path="/applicant/profile" element={
-              <ProtectedRoute allowedRoles={['applicant']}>
-                <Profile />
-              </ProtectedRoute>
-            } />
+              {/* Applicant Routes */}
+              <Route path="/applicant/home" element={
+                <ProtectedRoute allowedRoles={['applicant']}>
+                  <ApplicantWorkflow />
+                </ProtectedRoute>
+              } />
+              <Route path="/applicant/applications" element={
+                <ProtectedRoute allowedRoles={['applicant']}>
+                  <MyApplications />
+                </ProtectedRoute>
+              } />
+              <Route path="/applicant/notifications" element={
+                <ProtectedRoute allowedRoles={['applicant']}>
+                  <Notifications />
+                </ProtectedRoute>
+              } />
+              <Route path="/applicant/profile" element={
+                <ProtectedRoute allowedRoles={['applicant']}>
+                  <Profile />
+                </ProtectedRoute>
+              } />
 
-            {/* Inspector Routes */}
-            <Route path="/inspector/scanner" element={
-              <ProtectedRoute allowedRoles={['inspector']}>
-                <InspectorScanner />
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </Router>
-      </ThemeProvider>
+              {/* Inspector Routes */}
+              <Route path="/inspector/scanner" element={
+                <ProtectedRoute allowedRoles={['inspector']}>
+                  <InspectorScanner />
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </Router>
+        </ThemeProvider>
+      </WebSocketProvider>
     </AuthProvider>
   );
 }

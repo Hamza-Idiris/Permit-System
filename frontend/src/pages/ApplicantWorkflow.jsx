@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AuthContext from '../context/AuthContext';
@@ -9,10 +9,12 @@ import {
   Home, CreditCard, Bell, Plus, Menu, X, DollarSign
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useWebSocket } from '../context/WebSocketContext';
 
 const ApplicantWorkflow = () => {
   const navigate = useNavigate();
   const { user, token } = useContext(AuthContext);
+  const { wsData } = useWebSocket();
   const { darkMode } = useTheme();
   const [showForm, setShowForm] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -26,6 +28,14 @@ const ApplicantWorkflow = () => {
   const [error, setError] = useState(null);
   const [districts, setDistricts] = useState([]);
 
+  // Payment UI states
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [appIdForPayment, setAppIdForPayment] = useState(null);
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [paymentPhone, setPaymentPhone] = useState('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState(null);
+
   const [viewingApp, setViewingApp] = useState(null);
   const isReadOnly = viewingApp && viewingApp.status !== 'Returned';
 
@@ -36,7 +46,7 @@ const ApplicantWorkflow = () => {
     declaration: false
   });
 
-  const fetchApplications = async () => {
+  const fetchApplications = useCallback(async () => {
     try {
       setLoading(true);
       const config = { headers: { 'Authorization': `Bearer ${token}` } };
@@ -56,13 +66,19 @@ const ApplicantWorkflow = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (token) {
       fetchApplications();
     }
-  }, [token]);
+  }, [token, fetchApplications]);
+
+  useEffect(() => {
+    if (wsData && (wsData.type === 'PERMIT_APPLICATION_UPDATED' || wsData.type === 'GLOBAL_PERMIT_APPLICATION_UPDATED')) {
+      fetchApplications();
+    }
+  }, [wsData, fetchApplications]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('so-SO', {
@@ -166,10 +182,7 @@ const ApplicantWorkflow = () => {
     return textValid && filesValid && formData.declaration;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!isFormValid() || isReadOnly) return;
-
+  const executeFormSubmission = async () => {
     setIsSubmitting(true);
     setError(null);
     try {
@@ -202,6 +215,53 @@ const ApplicantWorkflow = () => {
       console.error('Submission failed', err);
       setError('Cillad ayaa dhacday, fadlan dib u soco.');
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!isFormValid() || isReadOnly) return;
+
+    const oldFee = viewingApp ? Number(viewingApp.formData.totalFee) || 0 : 0;
+    const diffAmount = formData.totalFee - oldFee;
+
+    // Pay first!
+    if (diffAmount > 0.01) {
+      setPaymentAmount(diffAmount);
+      setShowPaymentModal(true);
+      return;
+    }
+
+    executeFormSubmission();
+  };
+
+  const handlePayment = async () => {
+    if (paymentPhone.length < 7) {
+      setPaymentError('Fadlan gali lambar sax ah');
+      return;
+    }
+
+    setIsProcessingPayment(true);
+    setPaymentError(null);
+    try {
+      const config = { headers: { 'Authorization': `Bearer ${token}` } };
+      const response = await axios.post('http://localhost:5000/api/payment/waafi', {
+        phone: paymentPhone,
+        amount: paymentAmount,
+      }, config);
+
+      if (response.data.success) {
+        setIsProcessingPayment(false);
+        setShowPaymentModal(false);
+        // After successful payment, submit the actual form!
+        executeFormSubmission();
+      } else {
+        setPaymentError(response.data.message || 'Waxbaa khaldamay, fadlan dib u soco.');
+        setIsProcessingPayment(false);
+      }
+    } catch (err) {
+      setPaymentError('Cillad ayaa dhacday inta lagu gudo jiray bixinta lacagta.');
+      setIsProcessingPayment(false);
     }
   };
 
@@ -570,6 +630,44 @@ const ApplicantWorkflow = () => {
           </>
         )}
       </main>
+
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-navy/90 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-card-bg rounded-2xl w-full max-w-md p-10 text-center shadow-2xl animate-in zoom-in-95 duration-300 border border-border-color">
+            <h2 className="text-[24px] font-bold text-navy mb-2">Bixinta Lacagta (EVC Plus)</h2>
+            <p className="text-[13px] text-text-muted mb-6">Cadadka la rabo in la bixiyo (Amount): <strong className="text-navy font-black">${paymentAmount.toFixed(2)}</strong></p>
+
+            {paymentError && <div className="bg-red-50 text-red-600 p-3 mb-4 rounded flex items-start text-sm font-bold">{paymentError}</div>}
+
+            <div className="mb-6">
+              <label className="block text-left text-[12px] font-bold text-navy mb-2">Lambarka EVC Plus</label>
+              <div className="flex gap-2">
+                <span className="p-3 bg-gray-100 rounded-lg text-gray-700 font-bold border border-border-color">+252</span>
+                <input
+                  type="tel"
+                  value={paymentPhone}
+                  onChange={e => setPaymentPhone(e.target.value)}
+                  placeholder="61XXXXXXX"
+                  autoFocus
+                  className="w-full flex-1 p-3 text-[16px] tracking-wider bg-card-bg border border-border-color rounded-lg focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none font-bold text-text-main shadow-sm text-center"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button type="button" onClick={() => { setShowPaymentModal(false); setShowSuccess(true); }} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 text-[13px] rounded-lg transition-colors shadow-sm">Dib u dhig</button>
+              <button
+                type="button"
+                onClick={handlePayment}
+                disabled={isProcessingPayment}
+                className="flex-[2] bg-navy hover:brightness-110 text-white font-bold py-3 text-[13px] rounded-lg transition-colors shadow-lg disabled:opacity-50"
+              >
+                {isProcessingPayment ? 'Waala Gudbinayaa...' : 'Bixi Hada'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showSuccess && (
         <div className="fixed inset-0 bg-navy/90 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">

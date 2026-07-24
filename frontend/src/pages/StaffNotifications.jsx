@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar';
 import TopHeader from '../components/TopHeader';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useWebSocket } from '../context/WebSocketContext';
 import {
     Bell, Search, Clock, CheckCircle2,
     XCircle, RefreshCw, Trash2, ChevronDown,
@@ -15,7 +16,6 @@ import {
 
 const API = 'http://localhost:5000/api/notifications';
 const PAGE_SIZE = 15;
-const POLL_INTERVAL = 15000;
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -62,6 +62,7 @@ const StatCard = ({ icon: Icon, label, count, color, bg, borderColor, isActive, 
 
 const StaffNotifications = () => {
     const { user } = useAuth();
+    const { wsData } = useWebSocket();
     const { darkMode } = useTheme();
     const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -102,9 +103,10 @@ const StaffNotifications = () => {
     useEffect(() => { fetchFresh(); }, [fetchFresh]);
 
     useEffect(() => {
-        pollingRef.current = setInterval(() => fetchFresh(true), POLL_INTERVAL);
-        return () => clearInterval(pollingRef.current);
-    }, [fetchFresh]);
+        if (wsData && wsData.type === 'NOTIFICATION_CREATED') {
+            fetchFresh(true);
+        }
+    }, [wsData, fetchFresh]);
 
     const loadMore = async () => {
         if (loadingMore || !hasMore) return;
@@ -254,8 +256,8 @@ const StaffNotifications = () => {
                             <button
                                 onClick={() => setShowArchived(!showArchived)}
                                 className={`flex items-center gap-2 border rounded-xl px-5 py-2.5 text-[13px] font-bold transition-all ${showArchived
-                                        ? 'bg-navy text-white border-navy shadow-lg shadow-navy/20'
-                                        : 'bg-card-bg border-border-color text-text-muted hover:text-navy'
+                                    ? 'bg-navy text-white border-navy shadow-lg shadow-navy/20'
+                                    : 'bg-card-bg border-border-color text-text-muted hover:text-navy'
                                     }`}
                             >
                                 {showArchived ? <Bell size={15} /> : <History size={15} />}
@@ -430,7 +432,7 @@ const StaffNotifications = () => {
                         <div className="p-4 border-t border-border-color bg-table-header-bg/30 flex items-center justify-center gap-3">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                             <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
-                                {showArchived ? 'Archive mode active' : 'Live updates active · refreshes every 15s'}
+                                {showArchived ? 'Archive mode active' : 'Real-time live updates active'}
                             </p>
                         </div>
                     </div>

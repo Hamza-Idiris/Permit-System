@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/services/permit_service.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
+import 'package:permit_app/src/services/websocket_service.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -24,19 +25,19 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
   void initState() {
     super.initState();
     _fetchNotifications();
-    _startRefreshTimer();
+    WebSocketService().addListener(_onWebSocketMessage);
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    WebSocketService().removeListener(_onWebSocketMessage);
     super.dispose();
   }
 
-  void _startRefreshTimer() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+  void _onWebSocketMessage(Map<String, dynamic> data) {
+    if (data['type'] == 'NOTIFICATION_CREATED') {
       _fetchNotifications(silent: true);
-    });
+    }
   }
 
   Future<void> _fetchNotifications({bool silent = false}) async {
