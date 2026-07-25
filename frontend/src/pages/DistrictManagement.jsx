@@ -64,6 +64,10 @@ const DistrictManagement = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!formData.supervisor) {
+            alert('Fadlan dooro kormeeraha degmada (Please select a staff supervisor for this district).');
+            return;
+        }
         try {
             const config = { headers: { 'Authorization': `Bearer ${token}` } };
             if (editingDistrict) {
@@ -326,9 +330,12 @@ const DistrictManagement = () => {
 
                                 {/* Supervisor */}
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-black text-text-muted uppercase tracking-widest pl-1 transition-colors">Assign Staff Supervisor</label>
+                                    <label className="text-[11px] font-black text-text-muted uppercase tracking-widest pl-1 transition-colors">
+                                        Assign Staff Supervisor <span className="text-rose-500 font-bold">*</span>
+                                    </label>
                                     <div className="relative">
                                         <select
+                                            required
                                             className="w-full bg-table-header-bg border-none rounded-xl px-5 py-3.5 text-[14px] font-black text-navy focus:ring-2 focus:ring-navy/5 transition-all appearance-none cursor-pointer outline-none"
                                             value={formData.supervisor}
                                             onChange={(e) => setFormData({ ...formData, supervisor: e.target.value })}

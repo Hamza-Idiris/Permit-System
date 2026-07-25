@@ -250,6 +250,7 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
   void _showPaymentModal() {
     final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
     final TextEditingController phoneController = TextEditingController();
+    final TextEditingController amountController = TextEditingController(text: _totalFee.toStringAsFixed(2));
     bool isProcessing = false;
 
     showModalBottomSheet(
@@ -281,8 +282,23 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                     size: 50,
                     color: phoneController.text.startsWith('61') ? Colors.green : (phoneController.text.startsWith('62') ? Colors.blue : ColorPallete.primaryNavy),
                   ),
-                  const SizedBox(height: 20),
-                  Text('\$${_totalFee.toStringAsFixed(2)}', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: isDark ? Colors.white : ColorPallete.primaryNavy)),
+                  const SizedBox(height: 15),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('\$', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: isDark ? Colors.white : ColorPallete.primaryNavy)),
+                      const SizedBox(width: 4),
+                      IntrinsicWidth(
+                        child: TextField(
+                          controller: amountController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: isDark ? Colors.white : ColorPallete.primaryNavy),
+                          decoration: const InputDecoration(border: InputBorder.none, isDense: true),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 5),
                   Text('Confirming to Mogadishu Local Gov', style: TextStyle(color: isDark ? Colors.white38 : ColorPallete.hintTextColor, fontSize: 13, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 30),
@@ -337,11 +353,12 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid phone number (at least 7 digits)')));
                           return;
                         }
+                        final double actualAmount = double.tryParse(amountController.text) ?? _totalFee;
                         setModalState(() => isProcessing = true);
                         
                         final paymentResult = await _permitService.processPayment(
                           phone: phoneController.text,
-                          amount: _totalFee,
+                          amount: actualAmount,
                         );
 
                         if (!paymentResult['success']) {
@@ -397,6 +414,7 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                           buildingCategory: _selectedBuildingType!,
                           floors: isPerFloor ? _floorsController.text : '1',
                           landArea: _calculatedArea.toString(),
+                          totalFee: actualAmount.toString(),
                           nationalIdBytes: _passportBytes!, nationalIdName: _passportName ?? 'id.jpg',
                           ownershipDocsBytes: _landDocBytes!, ownershipDocsName: _landDocName ?? 'land.pdf',
                         );

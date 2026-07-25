@@ -294,7 +294,8 @@ const StaffReview = () => {
                                 <h3 className="flex items-center gap-2 font-black text-navy text-[15px] mb-8 transition-colors">
                                     <FileText size={18} className="text-navy" /> Faahfaahinta Mashruuca
                                 </h3>
-                                <div className="grid grid-cols-2 gap-y-10 gap-x-6">
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-10 gap-x-6">
                                     <div>
                                         <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Aqoongsiga Booska (Plot ID)</p>
                                         <p className="font-black text-text-main text-[15px] transition-colors">{application.formData.plotId}</p>
@@ -304,10 +305,14 @@ const StaffReview = () => {
                                         <p className="font-black text-text-main text-[15px] transition-colors">{application.formData.district}, Muqdisho</p>
                                     </div>
                                     <div>
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Weynaanta Booska (Land Size)</p>
+                                        <p className="font-black text-text-main text-[15px] transition-colors">{application.formData.landArea} m²</p>
+                                    </div>
+                                    <div>
                                         <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Lacagta Fasaxa (Permit Fee)</p>
                                         <div className="flex items-center gap-2">
-                                            <p className="font-black text-navy text-[20px] tracking-tight transition-colors">${application.formData.totalFee.toFixed(2)}</p>
-                                            {(application.isResubmitted || application.status === 'Approved') && (
+                                            <p className="font-black text-navy text-[20px] tracking-tight transition-colors">${Number(application.formData.totalFee || 0).toFixed(2)}</p>
+                                            {(application.isResubmitted || application.status === 'Approved' || application.paymentStatus === 'Paid') && (
                                                 <span className="bg-emerald-500/10 text-emerald-500 text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-emerald-500/20 transition-colors">
                                                     Paid (Horey u Bixiyay)
                                                 </span>
