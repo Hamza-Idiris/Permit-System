@@ -114,10 +114,10 @@ const BuildingTypesManagement = () => {
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         <TopHeader
-          breadcrumbs={['Settings', 'Building Types']}
+          breadcrumbs={['Settings', 'New Construction']}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
-          placeholder="Search building types..."
+          placeholder="Search construction types..."
           onMenuClick={() => setIsMobileMenuOpen(true)}
         />
 
@@ -128,10 +128,10 @@ const BuildingTypesManagement = () => {
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <h1 className="text-[34px] font-black text-navy tracking-tight transition-colors">
-                  Building Types Management
+                  New Construction
                 </h1>
                 <p className="text-text-muted font-bold text-[14px] leading-relaxed max-w-2xl transition-colors">
-                  Manage permit fees based on property types.
+                  Manage permit fees for new construction projects.
                 </p>
               </div>
               <button

@@ -16,6 +16,7 @@ import {
   Menu,
   GitBranch,
   X,
+  Wrench,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -26,7 +27,8 @@ const ADMIN_NAV = [
   { icon: Briefcase, label: 'Staff Management', to: '/admin/staff' },
   { icon: MapPin, label: 'District Management', to: '/admin/districts' },
   { icon: GitBranch, label: 'District Branches', to: '/admin/district-branches' },
-  { icon: Building2, label: 'Building Types', to: '/admin/building-types' },
+  { icon: Building2, label: 'New Construction', to: '/admin/building-types' },
+  { icon: Wrench, label: 'Renovation', to: '/admin/renovation' },
   { icon: ClipboardList, label: 'Applicant Management', to: '/admin/applicants' },
   { icon: Shield, label: 'Inspector Management', to: '/admin/inspectors' },
   { icon: FileText, label: 'All Applications', to: '/admin/all-permits' },

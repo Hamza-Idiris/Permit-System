@@ -72,14 +72,14 @@ const login = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Email not found' });
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
     // Check if password matches
     const isMatch = await user.matchPassword(password);
 
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Incorrect password' });
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
     res.json({

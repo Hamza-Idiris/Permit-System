@@ -34,6 +34,7 @@ const permitApplicationSchema = new mongoose.Schema({
     required: true
   },
   formData: {
+    requestType: { type: String, enum: ['New Construction', 'Renovation'], default: 'New Construction' },
     fullName: { type: String, required: true },
     phone: { type: String, required: true },
     email: { type: String, required: true },
