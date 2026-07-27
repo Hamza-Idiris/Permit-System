@@ -68,8 +68,6 @@ class _LoginPageState extends State<LoginPage> {
         }
       }
     } else {
-      _emailController.clear();
-      _passwordController.clear();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

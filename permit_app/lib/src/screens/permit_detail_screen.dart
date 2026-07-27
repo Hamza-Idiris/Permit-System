@@ -369,13 +369,16 @@ class _PermitDetailScreenState extends State<PermitDetailScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
-                                onPressed: () {
-                                  Navigator.push(
+                                onPressed: () async {
+                                  final result = await Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) => EditApplicationScreen(permit: widget.permit),
                                     ),
                                   );
+                                  if (result == true && context.mounted) {
+                                    Navigator.pop(context, true);
+                                  }
                                 },
                                 icon: const Icon(Icons.edit_rounded, size: 20),
                                 label: const Text(

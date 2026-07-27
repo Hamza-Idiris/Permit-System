@@ -447,9 +447,11 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
       barrierDismissible: false,
       transitionDuration: const Duration(milliseconds: 600),
       pageBuilder: (context, anim1, anim2) => Center(
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.8,
-          padding: const EdgeInsets.all(32),
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.8,
+            padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             borderRadius: BorderRadius.circular(32),
@@ -474,6 +476,7 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
             ],
           ),
         ),
+        ), // Added missing Material closing
       ),
     );
   }

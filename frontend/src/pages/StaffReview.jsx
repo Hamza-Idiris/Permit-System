@@ -261,9 +261,15 @@ const StaffReview = () => {
                             <span className="text-[10px] text-text-muted font-black uppercase tracking-wider mb-1 transition-colors">Xaaladda Hadda</span>
                             <span className={`text-[11px] px-4 py-1.5 rounded-full font-black tracking-wide border border-current/10 ${application.status === 'Approved'
                                 ? 'bg-emerald-500/10 text-emerald-500'
-                                : 'bg-amber-500/10 text-amber-500'
+                                : application.status === 'Returned'
+                                    ? 'bg-rose-500/10 text-rose-500'
+                                    : 'bg-amber-500/10 text-amber-500'
                                 }`}>
-                                {application.status === 'Approved' ? 'Waa la Anshaxiyay (Approved)' : 'Sugidda Hubinta'}
+                                {application.status === 'Approved'
+                                    ? 'Waa la Anshaxiyay (Approved)'
+                                    : application.status === 'Returned'
+                                        ? 'Waa la Celiyay (Rejected)'
+                                        : 'Sugidda Hubinta'}
                             </span>
                         </div>
                     </div>
@@ -546,20 +552,34 @@ const StaffReview = () => {
                                     </>
                                 ) : (
                                     <div className="space-y-3">
-                                        <button
-                                            onClick={() => handleDecision('Approved')}
-                                            disabled={isSubmitting}
-                                            className="w-full bg-white text-navy font-black text-[14px] py-4 rounded-xl flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-md disabled:opacity-50"
-                                        >
-                                            <Check size={18} strokeWidth={4} /> Accept
-                                        </button>
-                                        <button
-                                            onClick={() => setShowRejectForm(true)}
-                                            disabled={isSubmitting}
-                                            className="w-full bg-transparent border border-white/20 text-white font-bold text-[14px] py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-all disabled:opacity-50"
-                                        >
-                                            <XIcon size={18} strokeWidth={3} /> Reject
-                                        </button>
+                                        {(application.status !== 'Returned' || user?.role === 'superadmin') && (
+                                            <button
+                                                onClick={() => handleDecision('Approved')}
+                                                disabled={isSubmitting}
+                                                className="w-full bg-white text-navy font-black text-[14px] py-4 rounded-xl flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-md disabled:opacity-50"
+                                            >
+                                                <Check size={18} strokeWidth={4} /> Accept
+                                            </button>
+                                        )}
+
+                                        {application.status !== 'Returned' && (
+                                            <button
+                                                onClick={() => setShowRejectForm(true)}
+                                                disabled={isSubmitting}
+                                                className="w-full bg-transparent border border-white/20 text-white font-bold text-[14px] py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 transition-all disabled:opacity-50"
+                                            >
+                                                <XIcon size={18} strokeWidth={3} /> Reject
+                                            </button>
+                                        )}
+
+                                        {application.status === 'Returned' && user?.role === 'staff' && (
+                                            <div className="text-center py-4 bg-white/5 border border-white/10 rounded-xl mt-4">
+                                                <p className="text-gray-400 text-[11px] font-bold leading-relaxed px-4">
+                                                    Kaliya admin-ka ayaa awood u leh inuu aqbalo codsi la celiyay.
+                                                    (Only an admin can accept a rejected application)
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

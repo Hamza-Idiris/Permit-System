@@ -21,6 +21,10 @@ class _TrackApplicationsScreenState extends State<TrackApplicationsScreen> {
   String _errorMessage = '';
   Timer? _refreshTimer;
   bool _isFetching = false;
+  
+  String _filterStatus = 'All';
+  String _filterBuildingType = 'All';
+  String _filterDistrict = 'All';
 
   @override
   void initState() {
@@ -91,6 +95,10 @@ class _TrackApplicationsScreenState extends State<TrackApplicationsScreen> {
         centerTitle: true,
         actions: [
           IconButton(
+            icon: const Icon(Icons.filter_list_rounded),
+            onPressed: _showFilterModal,
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _fetchApplications,
           ),
@@ -114,15 +122,161 @@ class _TrackApplicationsScreenState extends State<TrackApplicationsScreen> {
                   : RefreshIndicator(
                       onRefresh: _fetchApplications,
                       color: ColorPallete.primaryNavy,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(24),
-                        itemCount: _applications.length,
-                        itemBuilder: (context, index) {
-                          final app = _applications[index];
-                          return _buildApplicationCard(app, isDark);
-                        },
+                      child: Builder(
+                        builder: (context) {
+                          final filteredApplications = _applications.where((app) {
+                            final status = app['status'] ?? 'Pending';
+                            final type = app['formData']?['buildingCategory'] ?? 'N/A';
+                            final dist = app['formData']?['district'] ?? 'N/A';
+
+                            if (_filterStatus != 'All' && status != _filterStatus) return false;
+                            if (_filterBuildingType != 'All' && type != _filterBuildingType) return false;
+                            if (_filterDistrict != 'All' && dist != _filterDistrict) return false;
+                            return true;
+                          }).toList();
+
+                          if (filteredApplications.isEmpty) {
+                            return Center(
+                              child: Text('No results match your filters.', style: TextStyle(color: isDark ? Colors.white38 : ColorPallete.hintTextColor, fontWeight: FontWeight.bold)),
+                            );
+                          }
+
+                          return ListView.builder(
+                            padding: const EdgeInsets.all(24),
+                            itemCount: filteredApplications.length,
+                            itemBuilder: (context, index) {
+                              final app = filteredApplications[index];
+                              return _buildApplicationCard(app, isDark);
+                            },
+                          );
+                        }
                       ),
                     ),
+    );
+  }
+
+  void _showFilterModal() {
+    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    
+    // Extract unique values for filters
+    final statuses = ['All', ..._applications.map((e) => e['status']?.toString() ?? 'Pending').toSet()];
+    final buildingTypes = ['All', ..._applications.map((e) => e['formData']?['buildingCategory']?.toString() ?? 'N/A').toSet()];
+    final districts = ['All', ..._applications.map((e) => e['formData']?['district']?.toString() ?? 'N/A').toSet()];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Filter Permits', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : ColorPallete.primaryNavy)),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                        color: isDark ? Colors.white70 : Colors.black,
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  const SizedBox(height: 10),
+                  
+                  const Text('Status', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: statuses.map((s) => ChoiceChip(
+                      label: Text(s),
+                      selected: _filterStatus == s,
+                      onSelected: (selected) {
+                        setModalState(() => _filterStatus = s);
+                        setState(() => _filterStatus = s);
+                      },
+                    )).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  const Text('Building Type', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _filterBuildingType,
+                    isExpanded: true,
+                    dropdownColor: isDark ? const Color(0xFF2D2D2D) : Colors.white,
+                    items: buildingTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis))).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setModalState(() => _filterBuildingType = val);
+                        setState(() => _filterBuildingType = val);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  const Text('District', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _filterDistrict,
+                    isExpanded: true,
+                    dropdownColor: isDark ? const Color(0xFF2D2D2D) : Colors.white,
+                    items: districts.map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis))).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setModalState(() => _filterDistrict = val);
+                        setState(() => _filterDistrict = val);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ColorPallete.primaryNavy,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _filterStatus = 'All';
+                          _filterBuildingType = 'All';
+                          _filterDistrict = 'All';
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: const Text('Reset Filters'),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            );
+          }
+        );
+      }
     );
   }
 
@@ -148,11 +302,14 @@ class _TrackApplicationsScreenState extends State<TrackApplicationsScreen> {
         borderRadius: BorderRadius.circular(20),
         elevation: 0,
         child: InkWell(
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => PermitDetailScreen(permit: app)),
             );
+            if (result == true) {
+              _fetchApplications();
+            }
           },
           borderRadius: BorderRadius.circular(20),
           child: Padding(

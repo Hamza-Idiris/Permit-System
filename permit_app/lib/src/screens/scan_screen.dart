@@ -108,10 +108,28 @@ class _ScanScreenState extends State<ScanScreen> {
           final String permitIdToSave = permit['permitId'] ?? permit['applicationId'] ?? permit['_id'] ?? barcodeValue;
 
           if (status == 'Approved') {
-            final Map<String, dynamic> normalizedData = {
-              'permitId': permitIdToSave,
-              'applicantName': (() {
-                // Priority 1: populated user object (real User record)
+            bool isExpired = false;
+            if (permit['expiryDate'] != null) {
+              try {
+                final DateTime expiry = DateTime.parse(permit['expiryDate'].toString());
+                if (expiry.isBefore(DateTime.now())) {
+                  isExpired = true;
+                }
+              } catch (_) {}
+            }
+
+            if (isExpired) {
+              await _scanHistoryService.saveScan(
+                permitId: permitIdToSave,
+                isSuccess: false,
+                permitData: permit,
+              );
+              _showFailedPanel('Permit has Expired');
+            } else {
+              final Map<String, dynamic> normalizedData = {
+                'permitId': permitIdToSave,
+                'applicantName': (() {
+                  // Priority 1: populated user object (real User record)
                 final userObj = permit['user'];
                 if (userObj is Map) {
                   final n = userObj['fullName']?.toString() ?? '';
@@ -135,17 +153,18 @@ class _ScanScreenState extends State<ScanScreen> {
               'expiryDate': permit['expiryDate'],
             };
             
-            await _scanHistoryService.saveScan(
-              permitId: permitIdToSave,
-              isSuccess: true,
-              permitData: normalizedData,
-            );
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => VerifiedPermitPage(permitData: normalizedData),
-              ),
-            );
+              await _scanHistoryService.saveScan(
+                permitId: permitIdToSave,
+                isSuccess: true,
+                permitData: normalizedData,
+              );
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VerifiedPermitPage(permitData: normalizedData),
+                ),
+              );
+            }
           } else {
             await _scanHistoryService.saveScan(
               permitId: permitIdToSave,

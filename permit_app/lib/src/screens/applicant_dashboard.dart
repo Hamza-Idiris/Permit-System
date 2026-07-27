@@ -717,12 +717,16 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
 
                             if (matchingPermit != null) {
                               if (mounted) {
-                                Navigator.push(
+                                final result = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => PermitDetailScreen(permit: matchingPermit),
                                   ),
                                 );
+                                if (result == true) {
+                                  _fetchPermits();
+                                  _fetchNotifications();
+                                }
                               }
                             } else {
                               if (mounted) {

@@ -596,7 +596,7 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.pop(context); // Close dialog
-                        Navigator.pop(context); // Return to Dashboard
+                        Navigator.pop(context, true); // Return true to pop caller
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: ColorPallete.primaryNavy,
