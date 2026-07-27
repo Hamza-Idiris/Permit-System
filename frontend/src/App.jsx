@@ -15,6 +15,7 @@ import UserManagement from './pages/UserManagement';
 import DistrictManagement from './pages/DistrictManagement';
 import DistrictBranchesManagement from './pages/DistrictBranchesManagement';
 import BuildingTypesManagement from './pages/BuildingTypesManagement';
+import RenovationManagement from './pages/RenovationManagement';
 import AllApplications from './pages/AllApplications';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
@@ -95,6 +96,11 @@ function App() {
               <Route path="/admin/building-types" element={
                 <ProtectedRoute allowedRoles={['superadmin']}>
                   <BuildingTypesManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/renovation" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <RenovationManagement />
                 </ProtectedRoute>
               } />
               <Route path="/admin/applicants" element={

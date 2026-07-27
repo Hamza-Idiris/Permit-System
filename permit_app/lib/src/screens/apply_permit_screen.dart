@@ -31,6 +31,10 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
   List<dynamic> _dynamicBuildingTypes = [];
   bool _isLoadingBuildingTypes = true;
 
+  String _selectedRequestType = 'New Construction';
+  List<dynamic> _allNewConstructionTypes = [];
+  List<dynamic> _allRenovationTypes = [];
+
   final List<String> _plotSizes = ['Rubac (10x10)', 'Nus (10x20)', 'Boos (20x20)', '2 Boos (20x40)', 'Custom'];
   List<String> _buildingTypes = [];
 
@@ -63,18 +67,37 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
   }
 
   Future<void> _fetchBuildingTypes() async {
-    final result = await _permitService.getBuildingTypes();
-    if (result['success'] && mounted) {
-      setState(() {
-        _dynamicBuildingTypes = result['data'];
-        _buildingTypes = _dynamicBuildingTypes.map((b) => b['name'].toString()).toList();
-        _isLoadingBuildingTypes = false;
-      });
-    } else if (mounted) {
+    final resultNew = await _permitService.getBuildingTypes();
+    final resultReno = await _permitService.getRenovationTypes();
+
+    if (mounted) {
+      if (resultNew['success']) {
+        _allNewConstructionTypes = resultNew['data'];
+      }
+      if (resultReno['success']) {
+        _allRenovationTypes = resultReno['data'];
+      }
+
+      _updateBuildingTypesList();
+      
       setState(() {
         _isLoadingBuildingTypes = false;
       });
     }
+  }
+
+  void _updateBuildingTypesList() {
+    setState(() {
+      _selectedBuildingType = null;
+      if (_selectedRequestType == 'New Construction') {
+        _dynamicBuildingTypes = _allNewConstructionTypes;
+      } else {
+        _dynamicBuildingTypes = _allRenovationTypes;
+      }
+      _buildingTypes = _dynamicBuildingTypes.map((b) => b['name'].toString()).toList();
+      _calculateFee();
+      _validateForm();
+    });
   }
 
   Future<void> _fetchDistricts() async {
@@ -411,6 +434,7 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                         final result = await _permitService.submitApplication(
                           fullName: storedName, phone: storedPhone, email: storedEmail,
                           plotId: _plotIdController.text, district: _selectedDistrict!,
+                          requestType: _selectedRequestType,
                           buildingCategory: _selectedBuildingType!,
                           floors: isPerFloor ? _floorsController.text : '1',
                           landArea: _calculatedArea.toString(),
@@ -526,7 +550,14 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                 ),
               ],
               const SizedBox(height: 15),
-              _buildDropdown('Architecture Type', _isLoadingBuildingTypes ? ['Loading...'] : _buildingTypes, _selectedBuildingType, isDark, _isLoadingBuildingTypes ? null : (val) {
+              _buildDropdown('Request Type', ['New Construction', 'Renovation'], _selectedRequestType, isDark, (val) {
+                setState(() {
+                  _selectedRequestType = val!;
+                  _updateBuildingTypesList();
+                });
+              }),
+              const SizedBox(height: 15),
+              _buildDropdown(_selectedRequestType == 'Renovation' ? 'Renovation Type' : 'Architecture Type', _isLoadingBuildingTypes ? ['Loading...'] : _buildingTypes, _selectedBuildingType, isDark, _isLoadingBuildingTypes ? null : (val) {
                 setState(() { _selectedBuildingType = val; _calculateFee(); _validateForm(); });
               }),
               

@@ -24,7 +24,7 @@ const applyForPermit = async (req, res) => {
     const {
       fullName, phone, email,
       plotId, district, buildingCategory,
-      floors, landArea
+      floors, landArea, requestType
     } = req.body;
 
     const files = req.files || {};
@@ -69,7 +69,7 @@ const applyForPermit = async (req, res) => {
       status: 'Pending',
       district,
       formData: {
-        fullName, phone, email, plotId, district, buildingCategory, floors, landArea, totalFee
+        fullName, phone, email, plotId, district, buildingCategory, floors, landArea, totalFee, requestType: requestType || 'New Construction'
       },
       documents
     });
@@ -117,7 +117,7 @@ const updateApplication = async (req, res) => {
     const {
       fullName, phone, email,
       plotId, district, buildingCategory,
-      floors, landArea
+      floors, landArea, requestType
     } = req.body;
 
     const application = await PermitApplication.findById(req.params.id);
@@ -140,7 +140,7 @@ const updateApplication = async (req, res) => {
     if (files.ownershipDocs) documents.ownershipDocs = `/uploads/${files.ownershipDocs[0].filename}`;
 
     application.formData = {
-      fullName, phone, email, plotId, district, buildingCategory, floors, landArea, totalFee
+      fullName, phone, email, plotId, district, buildingCategory, floors, landArea, totalFee, requestType: requestType || application.formData.requestType
     };
     application.documents = documents;
     application.status = 'Pending';

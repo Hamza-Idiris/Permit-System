@@ -536,6 +536,7 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
       email: formData['email']?.toString() ?? '',
       plotId: _plotIdController.text,
       district: _selectedDistrict!,
+      requestType: formData['requestType']?.toString() ?? 'New Construction',
       buildingCategory: _selectedBuildingType!,
       floors: isPerFloor ? _floorsController.text : '1',
       landArea: _calculatedArea.toString(),

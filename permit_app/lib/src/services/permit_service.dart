@@ -13,6 +13,7 @@ class PermitService {
     required String email,
     required String plotId,
     required String district,
+    required String requestType,
     required String buildingCategory,
     required String floors,
     required String landArea,
@@ -38,6 +39,7 @@ class PermitService {
       request.fields['email'] = email;
       request.fields['plotId'] = plotId;
       request.fields['district'] = district;
+      request.fields['requestType'] = requestType;
       request.fields['buildingCategory'] = buildingCategory;
       request.fields['floors'] = floors;
       request.fields['landArea'] = landArea;
@@ -125,6 +127,7 @@ class PermitService {
     required String email,
     required String plotId,
     required String district,
+    required String requestType,
     required String buildingCategory,
     required String floors,
     required String landArea,
@@ -146,6 +149,7 @@ class PermitService {
       request.fields['email'] = email;
       request.fields['plotId'] = plotId;
       request.fields['district'] = district;
+      request.fields['requestType'] = requestType;
       request.fields['buildingCategory'] = buildingCategory;
       request.fields['floors'] = floors;
       request.fields['landArea'] = landArea;
@@ -290,6 +294,30 @@ class PermitService {
         return {'success': true, 'data': data['data']};
       } else {
         return {'success': false, 'message': data['message'] ?? 'Failed to fetch building types'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'An error occurred: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> getRenovationTypes() async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) return {'success': false, 'message': 'No authentication token found'};
+
+      final response = await http.get(
+        Uri.parse('${Constants.apiBaseUrl}/renovation-types'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data['data']};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Failed to fetch renovation types'};
       }
     } catch (e) {
       return {'success': false, 'message': 'An error occurred: $e'};
