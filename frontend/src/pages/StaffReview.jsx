@@ -1,5 +1,5 @@
-import { useState, useEffect, useContext } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useContext, useRef } from 'react';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import QRCode from 'qrcode';
 import { jsPDF } from 'jspdf';
@@ -13,6 +13,8 @@ import {
 import Sidebar from '../components/Sidebar';
 import LoadingScreen from '../components/LoadingScreen';
 import TopHeader from '../components/TopHeader';
+import PermitCertificateCard from '../components/PermitCertificateCard';
+import { renderPermitCertificateCanvas, downloadCanvasPng } from '../utils/permitCertificate';
 import { useTheme } from '../context/ThemeContext';
 
 const StaffReview = () => {
@@ -20,6 +22,14 @@ const StaffReview = () => {
     const { user, token } = useContext(AuthContext);
     const { darkMode } = useTheme();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    const getBackPath = () => {
+        const from = location.state?.from;
+        if (typeof from === 'string' && from.startsWith('/')) return from;
+        if (user?.role === 'superadmin') return '/admin/all-permits';
+        return '/staff/applications';
+    };
 
     const [application, setApplication] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -28,6 +38,8 @@ const StaffReview = () => {
     const [error, setError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
     const [qrDataUrl, setQrDataUrl] = useState(null);
+    const [isExportingCert, setIsExportingCert] = useState(false);
+    const certificateRef = useRef(null);
 
     // Lightbox / Modal State
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -115,9 +127,13 @@ const StaffReview = () => {
             }
             try {
                 const url = await QRCode.toDataURL(String(payload), {
-                    width: 256,
+                    width: 512,
                     margin: 1,
-                    errorCorrectionLevel: 'M'
+                    errorCorrectionLevel: 'M',
+                    color: {
+                        dark: '#0B1F3A',
+                        light: '#FFFFFF',
+                    },
                 });
                 setQrDataUrl(url);
             } catch (err) {
@@ -128,45 +144,51 @@ const StaffReview = () => {
         generateQr();
     }, [application]);
 
-    const handleDownloadQrPng = () => {
-        if (!qrDataUrl) return;
-        const link = document.createElement('a');
-        link.href = qrDataUrl;
-        link.download = `permit-qr-${application.permitId || application.applicationId || 'code'}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    const handleDownloadQrPng = async () => {
+        if (!qrDataUrl || !application) return;
+        try {
+            setIsExportingCert(true);
+            const canvas = await renderPermitCertificateCanvas(application, qrDataUrl);
+            downloadCanvasPng(
+                canvas,
+                `permit_certificate_${application.permitId || application.applicationId || 'approved'}.png`
+            );
+        } catch (err) {
+            console.error('Failed to download certificate PNG', err);
+            setError('Failed to download certificate PNG.');
+        } finally {
+            setIsExportingCert(false);
+        }
     };
 
-    const handleDownloadCertificatePdf = () => {
+    const handleDownloadCertificatePdf = async () => {
         if (!qrDataUrl || !application) return;
+        try {
+            setIsExportingCert(true);
+            const canvas = await renderPermitCertificateCanvas(application, qrDataUrl);
+            const imgData = canvas.toDataURL('image/png');
 
-        const doc = new jsPDF();
-        const applicantName = application.user?.fullName || application.formData?.fullName || 'N/A';
-        const district = application.formData?.district || application.district || 'N/A';
-        const plotId = application.formData?.plotId || 'N/A';
-        const category = application.formData?.buildingCategory || 'N/A';
-        const approvalDate = application.approvalDate
-            ? new Date(application.approvalDate).toLocaleDateString()
-            : 'N/A';
-        const expiryDate = application.expiryDate
-            ? new Date(application.expiryDate).toLocaleDateString()
-            : 'N/A';
+            // Portrait page sized to certificate proportions
+            const pxToMm = 0.264583;
+            const imgWmm = (canvas.width / 2) * pxToMm; // canvas is 2x scale
+            const imgHmm = (canvas.height / 2) * pxToMm;
+            const margin = 8;
+            const pageW = imgWmm + margin * 2;
+            const pageH = imgHmm + margin * 2;
 
-        doc.setFontSize(18);
-        doc.text('Building Permit Certificate', 105, 24, { align: 'center' });
-        doc.setFontSize(11);
-        doc.text(`Permit ID: ${application.permitId || 'N/A'}`, 20, 45);
-        doc.text(`Applicant: ${applicantName}`, 20, 55);
-        doc.text(`District: ${district}`, 20, 65);
-        doc.text(`Plot ID: ${plotId}`, 20, 75);
-        doc.text(`Building Category: ${category}`, 20, 85);
-        doc.text(`Approval Date: ${approvalDate}`, 20, 95);
-        doc.text(`Expiry Date: ${expiryDate}`, 20, 105);
-        doc.addImage(qrDataUrl, 'PNG', 70, 120, 70, 70);
-        doc.setFontSize(9);
-        doc.text('Scan QR to verify this permit', 105, 200, { align: 'center' });
-        doc.save(`permit-certificate-${application.permitId || application.applicationId || 'approved'}.pdf`);
+            const doc = new jsPDF({
+                orientation: pageH >= pageW ? 'portrait' : 'landscape',
+                unit: 'mm',
+                format: [pageW, pageH],
+            });
+            doc.addImage(imgData, 'PNG', margin, margin, imgWmm, imgHmm);
+            doc.save(`permit-certificate-${application.permitId || application.applicationId || 'approved'}.pdf`);
+        } catch (err) {
+            console.error('Failed to download certificate PDF', err);
+            setError('Failed to download certificate PDF.');
+        } finally {
+            setIsExportingCert(false);
+        }
     };
 
     const handleDecision = async (status) => {
@@ -193,7 +215,7 @@ const StaffReview = () => {
                     setTimeout(() => setSuccessMsg(''), 4000);
                 } else {
                     setTimeout(() => {
-                        navigate(user?.role === 'superadmin' ? '/admin/all-permits' : '/staff/applications');
+                        navigate(getBackPath());
                     }, 1800);
                 }
             }
@@ -334,7 +356,7 @@ const StaffReview = () => {
                         <div className="flex items-start gap-4">
                             <button
                                 type="button"
-                                onClick={() => navigate(user?.role === 'superadmin' ? '/admin/all-permits' : '/staff/applications')}
+                                onClick={() => navigate(getBackPath())}
                                 className="mt-1 w-10 h-10 rounded-xl bg-card-bg border border-border-color flex items-center justify-center text-text-muted hover:text-navy hover:border-navy/30 transition-all shrink-0"
                                 title="Go back"
                             >
@@ -412,6 +434,17 @@ const StaffReview = () => {
                                                 </span>
                                             )}
                                         </div>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Request Type</p>
+                                        <p className="font-black text-text-main text-[15px] transition-colors">
+                                            {(() => {
+                                                const rt = application.formData?.requestType || 'New Construction';
+                                                if (rt === 'Renew') return 'Renew';
+                                                if (rt === 'Renovation') return 'Renovation';
+                                                return 'New';
+                                            })()}
+                                        </p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Building Category</p>
@@ -600,40 +633,37 @@ const StaffReview = () => {
                                         </p>
                                         {(application.qrData || application.permitId) && (
                                             <div className="mt-8 pt-8 border-t border-white/5">
-                                                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-2 italic">Permit is active</p>
-                                                {application.permitId && (
-                                                    <p className="text-white font-black text-sm mb-4 tracking-wide">
-                                                        Permit ID: <span className="text-emerald-400">{application.permitId}</span>
-                                                    </p>
-                                                )}
-                                                <div className="p-3 bg-white rounded-xl inline-block shadow-lg mb-4">
-                                                    {qrDataUrl ? (
-                                                        <img
-                                                            src={qrDataUrl}
-                                                            alt="Permit QR Code"
-                                                            className="w-24 h-24 object-contain"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-24 h-24 bg-gray-100 flex items-center justify-center">
-                                                            <span className="text-[8px] text-gray-400 font-bold">LOADING QR…</span>
+                                                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-4 italic">Official Certificate</p>
+                                                <div className="bg-[#F5F7FA] rounded-2xl mb-4 overflow-hidden border border-white/10">
+                                                    <div className="h-[280px] overflow-y-auto flex justify-center py-2">
+                                                        <div style={{ transform: 'scale(0.62)', transformOrigin: 'top center' }}>
+                                                            <PermitCertificateCard
+                                                                ref={certificateRef}
+                                                                application={application}
+                                                                qrDataUrl={qrDataUrl}
+                                                            />
                                                         </div>
-                                                    )}
+                                                    </div>
                                                 </div>
                                                 {qrDataUrl && (
                                                     <div className="space-y-2 px-1">
                                                         <button
                                                             type="button"
                                                             onClick={handleDownloadQrPng}
-                                                            className="w-full bg-white text-navy font-bold text-[12px] py-3 rounded-xl flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-md"
+                                                            disabled={isExportingCert}
+                                                            className="w-full bg-white text-navy font-bold text-[12px] py-3 rounded-xl flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-md disabled:opacity-50"
                                                         >
-                                                            <Download size={14} strokeWidth={3} /> Download PNG
+                                                            <Download size={14} strokeWidth={3} />
+                                                            {isExportingCert ? 'Preparing…' : 'Download Certificate PNG'}
                                                         </button>
                                                         <button
                                                             type="button"
                                                             onClick={handleDownloadCertificatePdf}
-                                                            className="w-full bg-emerald-500 text-white font-bold text-[12px] py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all shadow-md"
+                                                            disabled={isExportingCert}
+                                                            className="w-full bg-emerald-500 text-white font-bold text-[12px] py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all shadow-md disabled:opacity-50"
                                                         >
-                                                            <FileText size={14} strokeWidth={3} /> Download PDF Certificate
+                                                            <FileText size={14} strokeWidth={3} />
+                                                            {isExportingCert ? 'Preparing…' : 'Download Certificate PDF'}
                                                         </button>
                                                     </div>
                                                 )}
