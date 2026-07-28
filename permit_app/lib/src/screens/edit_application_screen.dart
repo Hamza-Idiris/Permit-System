@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
+import 'package:permit_app/src/widgets/payment_dialogs.dart';
 import 'package:provider/provider.dart';
 
 class EditApplicationScreen extends StatefulWidget {
@@ -336,7 +337,26 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
     }
   }
 
-  void _showPaymentModal(double diffAmount) {
+  Future<void> _showPaymentModal(double diffAmount) async {
+    final method = await showPaymentMethodChoice(context, amount: diffAmount);
+    if (method == null || !mounted) return;
+
+    if (method == 'offline') {
+      final paymentResult = await showOfflinePinPayment(
+        context,
+        permitService: _permitService,
+        amount: diffAmount,
+      );
+      if (paymentResult?['success'] == true && mounted) {
+        _processSubmission();
+      }
+      return;
+    }
+
+    _showOnlinePaymentModal(diffAmount);
+  }
+
+  void _showOnlinePaymentModal(double diffAmount) {
     final TextEditingController phoneController = TextEditingController();
     bool isProcessing = false;
 

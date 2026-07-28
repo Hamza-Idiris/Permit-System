@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:permit_app/src/services/permit_service.dart';
 import 'package:permit_app/src/utils/colors.dart';
+import 'package:permit_app/src/widgets/payment_dialogs.dart';
 import 'package:provider/provider.dart';
 
 class RenewPermitScreen extends StatefulWidget {
@@ -85,6 +86,50 @@ class _RenewPermitScreenState extends State<RenewPermitScreen> {
     final fee = (data['totalFee'] as num?)?.toDouble() ?? 0;
     final discount = (data['discountPercent'] as num?)?.toDouble() ?? 0;
     final form = permit['formData'] as Map<String, dynamic>? ?? {};
+
+    final method = await showPaymentMethodChoice(context, amount: fee);
+    if (method == null || !mounted) return;
+
+    if (method == 'offline') {
+      final payment = await showOfflinePinPayment(
+        context,
+        permitService: _permitService,
+        amount: fee,
+        phone: (await _storage.read(key: 'phone') ?? form['phone']?.toString() ?? '').replaceFirst('+252', ''),
+      );
+      if (payment?['success'] != true || !mounted) return;
+
+      setState(() => _submitting = true);
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator(color: ColorPallete.primaryNavy)),
+      );
+
+      final renew = await _permitService.renewPermit(applicationId: id, totalFee: fee);
+      if (!mounted) return;
+      Navigator.pop(context);
+      setState(() => _submitting = false);
+
+      if (renew['success'] == true) {
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Renew Submitted'),
+            content: Text('Your renew application was submitted. ID: ${renew['data']?['applicationId'] ?? ''}'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+            ],
+          ),
+        );
+        _load();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(renew['message']?.toString() ?? 'Renew failed')),
+        );
+      }
+      return;
+    }
 
     final phoneController = TextEditingController(
       text: (await _storage.read(key: 'phone') ?? form['phone']?.toString() ?? '').replaceFirst('+252', ''),
