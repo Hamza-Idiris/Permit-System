@@ -7,8 +7,9 @@ import {
     PieChart, Pie, Cell
 } from 'recharts';
 import {
-    Users, DollarSign, Clock, CheckCircle, TrendingUp, Download,
-    Calendar, Search, Bell, Grid3X3, LayoutDashboard, BarChart2, FileText, Banknote, Settings, HelpCircle, LogOut, ChevronDown, User
+    Users, DollarSign, Clock, CheckCircle, Download,
+    Calendar, MapPin, UserCheck, Briefcase, ClipboardList,
+    FileText, RotateCcw
 } from 'lucide-react';
 import LoadingScreen from '../components/LoadingScreen';
 import Sidebar from '../components/Sidebar';
@@ -115,10 +116,16 @@ const SuperAdminDashboard = () => {
     };
 
     const statCards = [
-        { label: 'Total Users', value: stats?.summary?.totalUsers?.toLocaleString() ?? '—', icon: Users, trend: '+12% vs last month', trendUp: true },
-        { label: 'Total Revenue', value: `$${(stats?.summary?.totalRevenue ?? 0).toLocaleString()}`, icon: DollarSign, trend: '+8.4% monthly growth', trendUp: true },
-        { label: 'Pending Applications', value: stats?.summary?.pendingApps?.toLocaleString() ?? '—', icon: Clock, trend: 'Requires Attention', trendUp: false },
-        { label: 'Approved Permits', value: stats?.summary?.approvedApps?.toLocaleString() ?? '—', icon: CheckCircle, trend: '94% Success Rate', trendUp: true },
+        { label: 'Total Users', value: stats?.summary?.totalUsers?.toLocaleString() ?? '—', icon: Users, subtitle: 'Registered accounts' },
+        { label: 'Applicants', value: stats?.summary?.applicantCount?.toLocaleString() ?? '—', icon: UserCheck, subtitle: 'Citizen profiles' },
+        { label: 'Staff Officers', value: stats?.summary?.staffCount?.toLocaleString() ?? '—', icon: Briefcase, subtitle: 'Municipal officers' },
+        { label: 'Inspectors', value: stats?.summary?.inspectorCount?.toLocaleString() ?? '—', icon: ClipboardList, subtitle: 'Field inspectors' },
+        { label: 'Districts', value: stats?.summary?.districtCount?.toLocaleString() ?? '—', icon: MapPin, subtitle: 'Coverage areas' },
+        { label: 'Total Applications', value: stats?.summary?.totalApps?.toLocaleString() ?? '—', icon: FileText, subtitle: 'All submissions' },
+        { label: 'Pending', value: stats?.summary?.pendingApps?.toLocaleString() ?? '—', icon: Clock, subtitle: 'Awaiting review' },
+        { label: 'Approved', value: stats?.summary?.approvedApps?.toLocaleString() ?? '—', icon: CheckCircle, subtitle: 'Issued permits' },
+        { label: 'Returned', value: stats?.summary?.returnedApps?.toLocaleString() ?? '—', icon: RotateCcw, subtitle: 'Sent back for fixes' },
+        { label: 'Total Revenue', value: `$${(stats?.summary?.totalRevenue ?? 0).toLocaleString()}`, icon: DollarSign, subtitle: 'Collected fees' },
     ];
 
     return (
@@ -202,20 +209,17 @@ const SuperAdminDashboard = () => {
                     </div>
 
                     {/* Stat Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
-                        {statCards.map(({ label, value, icon: Icon, trend, trendUp }) => (
-                            <div key={label} className="bg-card-bg rounded-2xl p-6 border border-border-color shadow-sm hover:shadow-md transition-all">
-                                <div className="flex items-center justify-between mb-4">
-                                    <p className="text-[12px] font-black text-text-muted uppercase tracking-widest">{label}</p>
-                                    <div className="w-10 h-10 bg-table-header-bg rounded-xl flex items-center justify-center text-text-muted">
-                                        <Icon size={18} />
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
+                        {statCards.map(({ label, value, icon: Icon, subtitle }) => (
+                            <div key={label} className="bg-card-bg rounded-2xl p-5 border border-border-color shadow-sm hover:shadow-md transition-all">
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="text-[11px] font-black text-text-muted uppercase tracking-widest leading-tight">{label}</p>
+                                    <div className="w-9 h-9 bg-table-header-bg rounded-xl flex items-center justify-center text-text-muted shrink-0">
+                                        <Icon size={16} />
                                     </div>
                                 </div>
-                                <h3 className="text-[32px] font-black text-navy tracking-tight leading-none mb-3">{value}</h3>
-                                <p className={`text-[12px] font-bold flex items-center gap-1 ${trendUp ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                    {trendUp ? <TrendingUp size={12} /> : <span className="font-black">!</span>}
-                                    {trend}
-                                </p>
+                                <h3 className="text-[26px] font-black text-navy tracking-tight leading-none mb-2">{value}</h3>
+                                <p className="text-[11px] font-bold text-text-muted">{subtitle}</p>
                             </div>
                         ))}
                     </div>

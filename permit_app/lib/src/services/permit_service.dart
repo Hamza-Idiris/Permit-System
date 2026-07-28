@@ -361,4 +361,105 @@ class PermitService {
       return {'success': false, 'message': 'An error occurred: $e'};
     }
   }
+
+  Future<Map<String, dynamic>> getRenewTypes() async {
+    try {
+      final token = await _storage.read(key: 'token');
+      final response = await http.get(
+        Uri.parse('${Constants.apiBaseUrl}/renew-types'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data['data']};
+      }
+      return {'success': false, 'message': data['message'] ?? 'Failed'};
+    } catch (e) {
+      return {'success': false, 'message': '$e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> getDiscounts() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${Constants.apiBaseUrl}/discounts'),
+      ).timeout(const Duration(seconds: 10));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data['data']};
+      }
+      return {'success': false, 'message': data['message'] ?? 'Failed'};
+    } catch (e) {
+      return {'success': false, 'message': '$e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> getRenewablePermits() async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) return {'success': false, 'message': 'No authentication token found'};
+
+      final response = await http.get(
+        Uri.parse('${Constants.apiBaseUrl}/permits/renewable'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 15));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data['data'] ?? []};
+      }
+      return {'success': false, 'message': data['message'] ?? 'Failed to load renewable permits'};
+    } catch (e) {
+      return {'success': false, 'message': 'An error occurred: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> quoteRenewFee(String applicationId) async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) return {'success': false, 'message': 'No authentication token found'};
+
+      final response = await http.get(
+        Uri.parse('${Constants.apiBaseUrl}/permits/renew/$applicationId/quote'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 15));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data['data']};
+      }
+      return {'success': false, 'message': data['message'] ?? 'Failed to quote renew fee'};
+    } catch (e) {
+      return {'success': false, 'message': 'An error occurred: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> renewPermit({
+    required String applicationId,
+    required double totalFee,
+  }) async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) return {'success': false, 'message': 'No authentication token found'};
+
+      final response = await http.post(
+        Uri.parse('${Constants.apiBaseUrl}/permits/renew/$applicationId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'totalFee': totalFee}),
+      ).timeout(const Duration(seconds: 30));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 201) {
+        return {'success': true, 'data': data['data']};
+      }
+      return {'success': false, 'message': data['message'] ?? 'Failed to renew permit'};
+    } catch (e) {
+      return {'success': false, 'message': 'An error occurred: $e'};
+    }
+  }
 }

@@ -29,11 +29,33 @@ class _ScanScreenState extends State<ScanScreen> {
     super.dispose();
   }
 
-  Future<void> _processQR(String barcodeValue) async {
+  Future<void> _logScanToServer(String code) async {
+    try {
+      final storage = const FlutterSecureStorage();
+      final token = await storage.read(key: 'token');
+      if (token == null) return;
+      await http.post(
+        Uri.parse('${Constants.apiBaseUrl}/scans'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'code': code, 'source': 'mobile'}),
+      ).timeout(const Duration(seconds: 8));
+    } catch (_) {
+      // Local history still saved; server log is best-effort
+    }
+  }
+
+  Future<void> _processQR(String barcodeValue, {bool logToServer = true}) async {
     if (_isProcessing) return;
     setState(() {
       _isProcessing = true;
     });
+
+    if (logToServer) {
+      _logScanToServer(barcodeValue);
+    }
 
     // 1. Try Native Offline Parsing Check
     try {
@@ -49,7 +71,8 @@ class _ScanScreenState extends State<ScanScreen> {
           if (lookupId != null && lookupId.isNotEmpty) {
             setState(() { _isProcessing = false; });
             // Re-enter as a DB lookup using the permitId from the QR payload
-            _processQR(lookupId);
+            // Server already logged the original QR payload above
+            _processQR(lookupId, logToServer: false);
             return;
           }
         }

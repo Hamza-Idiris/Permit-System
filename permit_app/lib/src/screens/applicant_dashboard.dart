@@ -13,6 +13,7 @@ import 'package:permit_app/src/screens/guidelines_screen.dart';
 import 'package:permit_app/src/screens/support_screen.dart';
 import 'package:permit_app/src/screens/transaction_history_screen.dart';
 import 'package:permit_app/src/screens/permit_detail_screen.dart';
+import 'package:permit_app/src/screens/renew_permit_screen.dart';
 import 'package:permit_app/src/services/permit_service.dart';
 import 'package:permit_app/src/services/websocket_service.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
@@ -432,12 +433,17 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
               childAspectRatio: 1.1,
               children: [
                 _buildQuickActionCard(
-                  title: 'Track Status',
-                  status: 'Real-time',
-                  icon: Icons.track_changes_rounded,
-                  color: const Color(0xFF3B82F6),
+                  title: 'Renew Permit',
+                  status: 'Expired',
+                  icon: Icons.autorenew_rounded,
+                  color: const Color(0xFF0EA5E9),
                   isDark: isDark,
-                  onTap: () => setState(() => _selectedIndex = 1),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const RenewPermitScreen()),
+                    );
+                  },
                 ),
                 _buildQuickActionCard(
                   title: 'Guidelines',

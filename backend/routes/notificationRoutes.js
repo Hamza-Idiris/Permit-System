@@ -5,28 +5,16 @@ const {
   markAsRead,
   archiveNotification,
   getUnreadNotificationsCount,
-  deleteNotification
+  deleteNotification,
+  sendNotification
 } = require('../controllers/notificationController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 
-// @route   GET /api/notifications
-// @access  Private
 router.get('/', protect, getNotifications);
-
-// @route   GET /api/notifications/unread
-// @access  Private
 router.get('/unread', protect, getUnreadNotificationsCount);
-
-// @route   PUT /api/notifications/:id/read
-// @access  Private
+router.post('/send', protect, authorizeRoles('superadmin', 'staff'), sendNotification);
 router.put('/:id/read', protect, markAsRead);
-
-// @route   PUT /api/notifications/:id/archive
-// @access  Private
 router.put('/:id/archive', protect, archiveNotification);
-
-// @route   DELETE /api/notifications/:id
-// @access  Private
 router.delete('/:id', protect, deleteNotification);
 
 module.exports = router;

@@ -140,6 +140,126 @@ const getUsers = async (req, res) => {
   }
 };
 
+// @desc    List superadmins (for staff compose → send to admin)
+// @route   GET /api/users/admins
+// @access  Private/Staff|Admin
+const getAdmins = async (req, res) => {
+  try {
+    const admins = await User.find({ role: 'superadmin', isActive: { $ne: false } })
+      .select('fullName email')
+      .sort({ fullName: 1 });
+    res.json({ success: true, result: admins.length, data: admins });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @desc    Search applicants (for staff walk-in applications)
+// @route   GET /api/users/applicants
+// @access  Private/Staff|Admin
+const getApplicants = async (req, res) => {
+  try {
+    const search = (req.query.search || '').trim();
+    const filter = { role: 'applicant' };
+
+    if (search) {
+      const regex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      filter.$or = [
+        { fullName: regex },
+        { email: regex },
+        { phone: regex }
+      ];
+    }
+
+    const users = await User.find(filter)
+      .select('fullName email phone gender district createdAt')
+      .sort({ fullName: 1 })
+      .limit(50);
+
+    res.json({ success: true, result: users.length, data: users });
+  } catch (error) {
+    console.error('Get Applicants Error:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @desc    Create or find walk-in applicant for staff counter service
+// @route   POST /api/users/walk-in
+// @access  Private/Staff|Admin
+const createWalkInApplicant = async (req, res) => {
+  try {
+    const { fullName, email, phone, gender } = req.body;
+
+    if (!fullName || !email || !phone || !gender) {
+      return res.status(400).json({
+        success: false,
+        message: 'fullName, email, phone, and gender are required'
+      });
+    }
+
+    const existing = await User.findOne({
+      $or: [{ email: email.toLowerCase() }, { phone }]
+    });
+
+    if (existing) {
+      if (existing.role !== 'applicant') {
+        return res.status(400).json({
+          success: false,
+          message: 'A non-applicant account already uses this email or phone'
+        });
+      }
+      return res.status(200).json({
+        success: true,
+        created: false,
+        data: {
+          _id: existing._id,
+          fullName: existing.fullName,
+          email: existing.email,
+          phone: existing.phone,
+          gender: existing.gender,
+          district: existing.district
+        }
+      });
+    }
+
+    const tempPassword = `WalkIn@${Math.floor(100000 + Math.random() * 900000)}`;
+    const user = new User({
+      fullName,
+      email: email.toLowerCase(),
+      phone,
+      password: tempPassword,
+      role: 'applicant',
+      gender,
+      district: req.user.role === 'staff' ? (req.user.district || '') : ''
+    });
+    user._isTemporaryPassword = true;
+    await user.save();
+
+    res.status(201).json({
+      success: true,
+      created: true,
+      data: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        gender: user.gender,
+        district: user.district
+      }
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(val => val.message);
+      return res.status(400).json({ success: false, message: messages.join(', ') });
+    }
+    if (error.code === 11000) {
+      return res.status(400).json({ success: false, message: 'User already exists with this email' });
+    }
+    console.error('Walk-in Applicant Error:', error);
+    res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
+  }
+};
+
 
 // @desc    Update user
 // @route   PUT /api/users/:id
@@ -155,6 +275,9 @@ const updateUser = async (req, res) => {
       user.role = req.body.role || user.role;
       user.district = req.body.district || user.district;
       user.gender = req.body.gender || user.gender;
+      if (typeof req.body.isActive === 'boolean') {
+        user.isActive = req.body.isActive;
+      }
       // If password exists in request, update it (will trigger pre-save hook)
       if (req.body.password) {
         user.password = req.body.password;
@@ -171,6 +294,7 @@ const updateUser = async (req, res) => {
         role: updatedUser.role,
         district: updatedUser.district,
         gender: updatedUser.gender,
+        isActive: updatedUser.isActive !== false,
       });
     } else {
       res.status(404).json({ success: false, message: 'User not found' });
@@ -198,6 +322,93 @@ const deleteUser = async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @desc    Toggle user active/inactive
+// @route   PUT /api/users/:id/status
+// @access  Private/Admin
+const toggleUserStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    if (user.role === 'superadmin') {
+      return res.status(403).json({ success: false, message: 'Cannot deactivate a superadmin' });
+    }
+
+    const next = typeof req.body.isActive === 'boolean' ? req.body.isActive : !user.isActive;
+    user.isActive = next;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `User ${next ? 'activated' : 'deactivated'} successfully`,
+      data: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
+  }
+};
+
+// @desc    Admin reset user password (sets temp password + optional email)
+// @route   PUT /api/users/:id/reset-password
+// @access  Private/Admin
+const adminResetPassword = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const tempPassword = req.body.password || `Reset@${Math.floor(100000 + Math.random() * 900000)}`;
+    user.password = tempPassword;
+    user._isTemporaryPassword = true;
+    user.passwordLastChanged = Date.now();
+
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetCode = resetCode;
+    user.resetCodeExpire = Date.now() + 24 * 60 * 60 * 1000;
+    await user.save();
+
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: 'Password Reset - Sovereign Ledger',
+        message: `Hello ${user.fullName}, an administrator reset your password. Temporary password: ${tempPassword}. Verification code: ${resetCode}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            <h2 style="color: #001F3F;">Password Reset</h2>
+            <p>Hello <b>${user.fullName}</b>,</p>
+            <p>An administrator has reset your account password.</p>
+            <p><b>Temporary password:</b> ${tempPassword}</p>
+            <p><b>Verification code:</b> ${resetCode}</p>
+            <p>Please log in and change your password immediately.</p>
+          </div>
+        `
+      });
+    } catch (emailErr) {
+      console.error('Reset password email failed:', emailErr);
+    }
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully. Temporary password emailed if mail is configured.',
+      temporaryPassword: tempPassword
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(val => val.message);
+      return res.status(400).json({ success: false, message: messages.join(', ') });
+    }
+    res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
   }
 };
 
@@ -297,8 +508,13 @@ module.exports = {
   registerUser,
   createUser,
   getUsers,
+  getAdmins,
+  getApplicants,
+  createWalkInApplicant,
   updateUser,
   deleteUser,
+  toggleUserStatus,
+  adminResetPassword,
   updateUserProfile,
   changePassword
 };

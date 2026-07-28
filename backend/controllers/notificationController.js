@@ -1,8 +1,6 @@
 const Notification = require('../models/Notification');
+const User = require('../models/User');
 
-// @desc    Get all notifications for the logged-in user
-// @route   GET /api/notifications
-// @access  Private
 const getNotifications = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
@@ -37,9 +35,6 @@ const getNotifications = async (req, res) => {
   }
 };
 
-// @desc    Mark a notification as read
-// @route   PUT /api/notifications/:id/read
-// @access  Private
 const markAsRead = async (req, res) => {
   try {
     const notification = await Notification.findById(req.params.id);
@@ -48,7 +43,6 @@ const markAsRead = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Notification not found.' });
     }
 
-    // Check if notification belongs to the user
     if (notification.user.toString() !== req.user._id.toString()) {
       return res.status(401).json({ success: false, message: 'Not authorized to update this notification.' });
     }
@@ -63,9 +57,6 @@ const markAsRead = async (req, res) => {
   }
 };
 
-// @desc    Archive a notification
-// @route   PUT /api/notifications/:id/archive
-// @access  Private
 const archiveNotification = async (req, res) => {
   try {
     const notification = await Notification.findById(req.params.id);
@@ -119,10 +110,105 @@ const deleteNotification = async (req, res) => {
   }
 };
 
+// Admin: all roles / staff / inspector / applicant / district applicants / specific userIds
+// Staff: pick one admin OR applicants in a chosen district
+const sendNotification = async (req, res) => {
+  try {
+    const { message, role, userIds, target, adminId, district } = req.body;
+
+    if (!message || !String(message).trim()) {
+      return res.status(400).json({ success: false, message: 'Message is required' });
+    }
+
+    let recipients = [];
+
+    if (req.user.role === 'staff') {
+      if (target === 'admin') {
+        if (!adminId) {
+          return res.status(400).json({ success: false, message: 'Please select an admin' });
+        }
+        const admin = await User.findOne({ _id: adminId, role: 'superadmin', isActive: { $ne: false } }).select('_id');
+        if (!admin) {
+          return res.status(404).json({ success: false, message: 'Admin not found' });
+        }
+        recipients = [admin];
+      } else {
+        // applicants in selected district (or staff's own district)
+        const targetDistrict = district || req.user.district;
+        if (!targetDistrict) {
+          return res.status(400).json({ success: false, message: 'Please select a district' });
+        }
+        recipients = await User.find({
+          role: 'applicant',
+          district: targetDistrict,
+          isActive: { $ne: false }
+        }).select('_id');
+      }
+    } else if (req.user.role === 'superadmin') {
+      if (target === 'district' || (district && role === 'applicant')) {
+        if (!district) {
+          return res.status(400).json({ success: false, message: 'Please select a district' });
+        }
+        recipients = await User.find({
+          role: 'applicant',
+          district,
+          isActive: { $ne: false }
+        }).select('_id');
+      } else if (Array.isArray(userIds) && userIds.length > 0) {
+        recipients = await User.find({ _id: { $in: userIds }, isActive: { $ne: false } }).select('_id');
+      } else if (role && role !== 'all') {
+        if (!['staff', 'inspector', 'applicant', 'superadmin'].includes(role)) {
+          return res.status(400).json({ success: false, message: 'Invalid target role' });
+        }
+        recipients = await User.find({ role, isActive: { $ne: false } }).select('_id');
+      } else {
+        recipients = await User.find({
+          role: { $in: ['staff', 'inspector', 'applicant'] },
+          isActive: { $ne: false }
+        }).select('_id');
+      }
+    } else {
+      return res.status(403).json({ success: false, message: 'Not authorized to send notifications' });
+    }
+
+    if (recipients.length === 0) {
+      return res.status(404).json({ success: false, message: 'No matching recipients found' });
+    }
+
+    const docs = recipients.map(u => ({
+      user: u._id,
+      message: String(message).trim(),
+      type: 'Broadcast'
+    }));
+
+    await Notification.insertMany(docs);
+
+    try {
+      const { sendToUser } = require('../services/websocketService');
+      for (const u of recipients) {
+        sendToUser(u._id, {
+          type: 'NOTIFICATION_CREATED',
+          payload: { message: String(message).trim(), type: 'Broadcast' }
+        });
+      }
+    } catch (_) { /* ignore */ }
+
+    res.status(201).json({
+      success: true,
+      message: `Notification sent to ${recipients.length} recipient(s)`,
+      sent: recipients.length
+    });
+  } catch (error) {
+    console.error('Send Notification Error:', error);
+    res.status(500).json({ success: false, message: 'Server Error sending notification' });
+  }
+};
+
 module.exports = {
   getNotifications,
   markAsRead,
   archiveNotification,
   getUnreadNotificationsCount,
-  deleteNotification
+  deleteNotification,
+  sendNotification
 };

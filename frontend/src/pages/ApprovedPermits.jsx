@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Search,
     Download,
     CheckCircle,
     ArrowLeft,
     Eye,
-    Settings2
+    Settings2,
+    MapPin,
+    Calendar,
+    Building2,
 } from 'lucide-react';
 import ConfigDrawer from '../components/ConfigDrawer';
 import Sidebar from '../components/Sidebar';
@@ -29,8 +31,8 @@ const ALL_COLUMNS = [
 ];
 
 const ApprovedPermits = () => {
-    const { user } = useAuth();
-    const { darkMode } = useTheme();
+    useAuth();
+    useTheme();
     const navigate = useNavigate();
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -46,7 +48,6 @@ const ApprovedPermits = () => {
                 const { data } = await axios.get('http://localhost:5000/api/permits/all', {
                     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                 });
-                // Filter only approved ones
                 setApplications(data.data.filter(app => app.status === 'Approved'));
                 setLoading(false);
             } catch (err) {
@@ -58,11 +59,20 @@ const ApprovedPermits = () => {
     }, []);
 
     const formatDate = (dateString) => {
+        if (!dateString) return '—';
         return new Date(dateString).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric'
         });
+    };
+
+    const getFloorsDisplay = (app) => {
+        const category = app.formData?.buildingCategory || '';
+        if (/dabaq/i.test(category) && app.formData?.floors != null && app.formData.floors !== '') {
+            return app.formData.floors;
+        }
+        return '—';
     };
 
     const handleExportCSV = () => {
@@ -73,7 +83,7 @@ const ApprovedPermits = () => {
             app.formData?.buildingCategory,
             app.district,
             app.formData?.landArea,
-            app.formData?.floors,
+            getFloorsDisplay(app),
             formatDate(app.approvalDate || app.updatedAt),
             formatDate(app.expiryDate)
         ]);
@@ -98,17 +108,20 @@ const ApprovedPermits = () => {
         return (
             app.applicationId.toLowerCase().includes(term) ||
             (app.formData?.fullName || '').toLowerCase().includes(term) ||
-            app.district.toLowerCase().includes(term)
+            (app.user?.fullName || '').toLowerCase().includes(term) ||
+            (app.district || '').toLowerCase().includes(term)
         );
     });
+
+    const cellPad = rowDensity === 'compact' ? 'py-3' : 'py-5';
 
     if (loading) return <LoadingScreen />;
 
     return (
-        <div className="flex h-screen bg-bg-soft overflow-hidden font-sans transition-colors duration-300">
+        <div className="flex min-h-screen bg-bg-soft font-sans transition-colors duration-300">
             <Sidebar isMobileMenuOpen={isMobileMenuOpen} setIsMobileMenuOpen={setIsMobileMenuOpen} />
 
-            <main className="flex-1 flex flex-col overflow-hidden relative w-full">
+            <main className="flex-1 flex flex-col h-screen overflow-hidden">
                 <TopHeader
                     breadcrumbs={['Staff', 'Approved Permits']}
                     searchTerm={searchTerm}
@@ -116,91 +129,170 @@ const ApprovedPermits = () => {
                     placeholder="Search approved permits..."
                 />
 
-                <div className="flex-1 overflow-y-auto p-10">
-                    <div className="max-w-[1400px] mx-auto space-y-10">
-                        <div className="flex items-center gap-4">
-                            <Link to="/staff/dashboard" className="w-10 h-10 rounded-xl bg-card-bg border border-border-color flex items-center justify-center text-text-muted hover:text-navy transition-all">
+                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-7">
+                        <div className="flex items-start gap-4">
+                            <Link
+                                to="/staff/dashboard"
+                                className="w-10 h-10 rounded-xl bg-card-bg border border-border-color flex items-center justify-center text-text-muted hover:text-navy transition-all shrink-0"
+                            >
                                 <ArrowLeft size={20} />
                             </Link>
                             <div>
-                                <h2 className="text-[32px] font-black text-navy tracking-tight transition-colors transition-colors">Approved Permits</h2>
-                                <p className="text-[15px] text-text-muted mt-1 font-black transition-colors">Archive of all finalized and approved building applications.</p>
+                                <h1 className="text-3xl font-black text-navy tracking-tight mb-1">
+                                    Approved Permits
+                                </h1>
+                                <p className="text-sm text-text-muted font-bold">
+                                    Archive of finalized and approved building applications.
+                                </p>
                             </div>
-                            <button
-                                onClick={handleExportCSV}
-                                className="ml-auto flex items-center gap-2 bg-card-bg border border-border-color px-5 py-3 rounded-xl text-[14px] font-black text-navy hover:bg-table-header-bg transition-all shadow-sm"
-                            >
-                                <Download size={18} /> Export CSV
-                            </button>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
                             <button
                                 onClick={() => setShowConfigDrawer(true)}
-                                className="flex items-center gap-2 bg-navy text-white border border-navy px-5 py-3 rounded-xl text-[14px] font-bold hover:bg-navy/90 transition-all shadow-lg"
+                                className="flex items-center gap-2 bg-card-bg border border-border-color rounded-xl px-5 py-2.5 text-[13px] font-bold text-text-muted hover:text-navy transition-all"
                             >
-                                <Settings2 size={18} /> Configure Views
+                                <Settings2 size={15} /> Configure View
+                            </button>
+                            <button
+                                onClick={handleExportCSV}
+                                className="flex items-center gap-2 bg-navy text-white rounded-xl px-5 py-2.5 text-[13px] font-bold hover:brightness-110 transition-all shadow-lg shadow-navy/20"
+                            >
+                                <Download size={15} /> Export CSV
                             </button>
                         </div>
+                    </div>
 
-                        <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm overflow-hidden transition-colors duration-300">
-                            <table className="w-full text-left border-collapse">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
+                        <div className="bg-card-bg border border-border-color rounded-2xl p-5 flex items-center gap-4">
+                            <div className="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                                <CheckCircle size={20} />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Total Approved</p>
+                                <p className="text-2xl font-black text-navy tracking-tight">{applications.length}</p>
+                            </div>
+                        </div>
+                        <div className="bg-card-bg border border-border-color rounded-2xl p-5 flex items-center gap-4">
+                            <div className="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                                <Building2 size={20} />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Showing</p>
+                                <p className="text-2xl font-black text-navy tracking-tight">{filtered.length}</p>
+                            </div>
+                        </div>
+                        <div className="bg-card-bg border border-border-color rounded-2xl p-5 flex items-center gap-4">
+                            <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                                <Calendar size={20} />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Archive</p>
+                                <p className="text-sm font-black text-navy mt-1">Approved only</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm overflow-hidden transition-colors duration-300">
+                        <div className="flex items-center justify-between p-5 border-b border-border-color">
+                            <h3 className="text-xs font-black text-navy uppercase tracking-[0.2em]">
+                                Approved Applications
+                            </h3>
+                            <span className="text-[11px] text-text-muted font-bold uppercase tracking-wider">
+                                {filtered.length} Results
+                            </span>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
                                 <thead>
-                                    <tr className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-color transition-colors bg-table-header-bg/30">
-                                        {visibleColumns.includes('applicationId') && <th className="px-6 py-4">Application ID</th>}
-                                        {visibleColumns.includes('applicant') && <th className="px-6 py-4">Applicant</th>}
-                                        {visibleColumns.includes('category') && <th className="px-6 py-4">Category</th>}
-                                        {visibleColumns.includes('district') && <th className="px-6 py-4">District</th>}
-                                        {visibleColumns.includes('approvalDate') && <th className="px-6 py-4">Approval Date</th>}
-                                        {visibleColumns.includes('expiryDate') && <th className="px-6 py-4">Expiry Date</th>}
-                                        {visibleColumns.includes('landArea') && <th className="px-6 py-4">Land Area</th>}
-                                        {visibleColumns.includes('floors') && <th className="px-6 py-4">Floors</th>}
-                                        {visibleColumns.includes('actions') && <th className="px-6 py-4 text-right">Actions</th>}
+                                    <tr className="bg-table-header-bg/50 border-b border-border-color">
+                                        {ALL_COLUMNS.filter(col => visibleColumns.includes(col.id)).map(col => (
+                                            <th
+                                                key={col.id}
+                                                className={`px-6 text-left text-[10px] font-black text-text-muted uppercase tracking-widest ${cellPad} ${col.id === 'actions' ? 'text-right' : ''}`}
+                                            >
+                                                {col.label}
+                                            </th>
+                                        ))}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border-color transition-colors">
-                                    {loading ? (
-                                        <tr><td colSpan={visibleColumns.length} className="text-center py-20 text-text-muted font-black italic">Gathering records...</td></tr>
-                                    ) : filtered.length === 0 ? (
-                                        <tr><td colSpan={visibleColumns.length} className="text-center py-20 text-text-muted font-black">No approved permits found.</td></tr>
+                                <tbody>
+                                    {filtered.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={visibleColumns.length} className="px-6 py-16 text-center text-text-muted text-sm font-bold">
+                                                No approved permits found.
+                                            </td>
+                                        </tr>
                                     ) : (
-                                        filtered.map(app => (
-                                            <tr key={app._id} className="hover:bg-table-header-bg/50 transition-colors">
-                                                {visibleColumns.includes('applicationId') && <td className="px-6 py-4 font-black text-navy tracking-tight transition-colors">#{app.applicationId}</td>}
+                                        filtered.map((app, idx) => (
+                                            <tr
+                                                key={app._id}
+                                                className={`border-b border-border-color transition-colors hover:bg-table-header-bg/30 ${idx % 2 === 0 ? 'bg-card-bg' : 'bg-table-header-bg/10'}`}
+                                            >
+                                                {visibleColumns.includes('applicationId') && (
+                                                    <td className={`px-6 text-[13px] font-black text-navy ${cellPad}`}>
+                                                        #{app.applicationId}
+                                                    </td>
+                                                )}
                                                 {visibleColumns.includes('applicant') && (
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-4 text-left">
-                                                            <div className="w-10 h-10 rounded-2xl bg-navy/5 flex items-center justify-center text-[13px] font-black text-navy border border-border-color shadow-sm shrink-0 transition-colors">
-                                                                {(app.user?.fullName || app.formData?.fullName || 'A')[0].toUpperCase()}
+                                                    <td className={`px-6 ${cellPad}`}>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center text-[12px] font-black text-emerald-600 uppercase shrink-0">
+                                                                {(app.user?.fullName || app.formData?.fullName || 'A')[0]}
                                                             </div>
-                                                            <div className="flex flex-col">
-                                                                <span className="font-black text-navy text-[15px] transition-colors">{app.user?.fullName || app.formData?.fullName || 'Unknown'}</span>
-                                                                <span className="text-[11px] text-text-muted font-black uppercase tracking-wider transition-colors">{app.formData?.district || app.district}</span>
+                                                            <div className="min-w-0">
+                                                                <p className="text-[13px] font-bold text-text-main truncate">
+                                                                    {app.user?.fullName || app.formData?.fullName || 'Unknown'}
+                                                                </p>
+                                                                <p className="text-[11px] text-text-muted font-medium flex items-center gap-1 mt-0.5">
+                                                                    <MapPin size={11} />
+                                                                    {app.formData?.district || app.district || '—'}
+                                                                </p>
                                                             </div>
                                                         </div>
                                                     </td>
                                                 )}
                                                 {visibleColumns.includes('category') && (
-                                                    <td className="px-6 py-4">
-                                                        <span className="text-[11px] font-black text-white bg-navy px-3 py-1.5 rounded-lg uppercase tracking-wider">
-                                                            {app.formData.buildingCategory}
+                                                    <td className={`px-6 ${cellPad}`}>
+                                                        <span className="inline-flex bg-table-header-bg text-text-muted px-2.5 py-1 rounded-md text-[10px] font-black tracking-widest uppercase border border-border-color">
+                                                            {app.formData?.buildingCategory || '—'}
                                                         </span>
                                                     </td>
                                                 )}
-                                                {visibleColumns.includes('district') && <td className="px-6 py-4 text-text-muted font-black text-[13px]">{app.district}</td>}
-                                                {visibleColumns.includes('approvalDate') && <td className="px-6 py-4 text-text-muted font-black text-[13px]">{formatDate(app.approvalDate || app.updatedAt)}</td>}
-                                                {visibleColumns.includes('expiryDate') && (
-                                                    <td className="px-6 py-4 text-rose-500 font-black text-[13px]">
-                                                        {app.expiryDate ? formatDate(app.expiryDate) : 'N/A'}
+                                                {visibleColumns.includes('district') && (
+                                                    <td className={`px-6 text-[13px] font-bold text-text-muted ${cellPad}`}>
+                                                        {app.district || '—'}
                                                     </td>
                                                 )}
-                                                {visibleColumns.includes('landArea') && <td className="px-6 py-4 text-text-muted font-black text-[13px]">{app.formData?.landArea || '—'}</td>}
-                                                {visibleColumns.includes('floors') && <td className="px-6 py-4 text-text-muted font-black text-[13px]">{app.formData?.floors || '—'}</td>}
+                                                {visibleColumns.includes('approvalDate') && (
+                                                    <td className={`px-6 text-[13px] font-bold text-text-muted whitespace-nowrap ${cellPad}`}>
+                                                        {formatDate(app.approvalDate || app.updatedAt)}
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes('expiryDate') && (
+                                                    <td className={`px-6 text-[13px] font-black text-rose-500 whitespace-nowrap ${cellPad}`}>
+                                                        {app.expiryDate ? formatDate(app.expiryDate) : '—'}
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes('landArea') && (
+                                                    <td className={`px-6 text-[13px] font-bold text-text-muted ${cellPad}`}>
+                                                        {app.formData?.landArea ? `${app.formData.landArea} m²` : '—'}
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes('floors') && (
+                                                    <td className={`px-6 text-[13px] font-bold text-text-muted ${cellPad}`}>
+                                                        {getFloorsDisplay(app)}
+                                                    </td>
+                                                )}
                                                 {visibleColumns.includes('actions') && (
-                                                    <td className="px-6 py-4 text-right">
+                                                    <td className={`px-6 text-right ${cellPad}`}>
                                                         <button
                                                             onClick={() => navigate(`/staff/review/${app._id}`)}
-                                                            className="w-9 h-9 rounded-lg bg-table-header-bg text-text-muted hover:bg-navy hover:text-white flex items-center justify-center transition-all ml-auto border border-border-color"
+                                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-black text-text-muted hover:text-navy hover:bg-table-header-bg border border-transparent hover:border-border-color transition-all"
                                                             title="View Details"
                                                         >
-                                                            <Eye size={18} />
+                                                            <Eye size={15} /> View
                                                         </button>
                                                     </td>
                                                 )}

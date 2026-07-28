@@ -16,9 +16,9 @@ const PAGE_SIZE = 10;
 
 function getRelativeTime(dateString) {
   const diffSec = Math.floor((Date.now() - new Date(dateString)) / 1000);
-  if (diffSec < 60) return 'Hadda';
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)} daqiiqo ka hor`;
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} saacadood ka hor`;
+  if (diffSec < 60) return 'Just now';
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
   const d = new Date(dateString);
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;

@@ -30,6 +30,7 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
 
   List<dynamic> _dynamicBuildingTypes = [];
   bool _isLoadingBuildingTypes = true;
+  List<dynamic> _discounts = [];
 
   String _selectedRequestType = 'New Construction';
   List<dynamic> _allNewConstructionTypes = [];
@@ -69,6 +70,7 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
   Future<void> _fetchBuildingTypes() async {
     final resultNew = await _permitService.getBuildingTypes();
     final resultReno = await _permitService.getRenovationTypes();
+    final resultDisc = await _permitService.getDiscounts();
 
     if (mounted) {
       if (resultNew['success']) {
@@ -76,6 +78,9 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
       }
       if (resultReno['success']) {
         _allRenovationTypes = resultReno['data'];
+      }
+      if (resultDisc['success']) {
+        _discounts = resultDisc['data'] as List<dynamic>? ?? [];
       }
 
       _updateBuildingTypesList();
@@ -175,6 +180,31 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
         fee = area * multiplier * floors;
       } else {
         fee = area * multiplier;
+      }
+
+      // Apply active discount: type-specific first, else category-wide
+      double discountPct = 0;
+      final typeName = _selectedBuildingType ?? '';
+      for (final d in _discounts) {
+        if (d['isActive'] == false) continue;
+        if (d['scope'] == 'type' &&
+            (d['typeName']?.toString().toLowerCase() == typeName.toLowerCase()) &&
+            ((d['requestType'] == null || d['requestType'] == '' || d['requestType'] == _selectedRequestType))) {
+          discountPct = (d['discountPercent'] ?? 0).toDouble();
+          break;
+        }
+      }
+      if (discountPct == 0) {
+        for (final d in _discounts) {
+          if (d['isActive'] == false) continue;
+          if (d['scope'] == 'category' && d['requestType'] == _selectedRequestType) {
+            discountPct = (d['discountPercent'] ?? 0).toDouble();
+            break;
+          }
+        }
+      }
+      if (discountPct > 0) {
+        fee = fee * (1 - discountPct / 100);
       }
     }
 

@@ -44,6 +44,9 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/building-types', buildingTypeRoutes);
 app.use('/api/district-branches', districtBranchRoutes);
 app.use('/api/renovation-types', renovationTypeRoutes);
+app.use('/api/renew-types', require('./routes/renewTypeRoutes'));
+app.use('/api/discounts', require('./routes/discountRoutes'));
+app.use('/api/scans', require('./routes/scanRoutes'));
 
 // App proxy for PDF blob bypass (Evades IDM entirely)
 app.get('/api/stream-pdf', (req, res) => {
