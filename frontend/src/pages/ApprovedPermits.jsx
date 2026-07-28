@@ -288,7 +288,7 @@ const ApprovedPermits = () => {
                                                 {visibleColumns.includes('actions') && (
                                                     <td className={`px-6 text-right ${cellPad}`}>
                                                         <button
-                                                            onClick={() => navigate(`/staff/review/${app._id}`)}
+                                                            onClick={() => navigate(`/staff/review/${app._id}`, { state: { from: '/staff/approved' } })}
                                                             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-black text-text-muted hover:text-navy hover:bg-table-header-bg border border-transparent hover:border-border-color transition-all"
                                                             title="View Details"
                                                         >

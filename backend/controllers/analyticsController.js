@@ -45,11 +45,29 @@ const scopeFilter = (req, base = {}) => {
   }
 
   if (req.query.requestType && req.query.requestType !== 'all') {
-    filter['formData.requestType'] = req.query.requestType;
+    if (req.query.requestType === 'New Construction') {
+      filter.$and = [
+        ...(filter.$and || []),
+        {
+          $or: [
+            { 'formData.requestType': 'New Construction' },
+            { 'formData.requestType': { $exists: false } },
+            { 'formData.requestType': null },
+            { 'formData.requestType': '' },
+          ],
+        },
+      ];
+    } else {
+      filter['formData.requestType'] = req.query.requestType;
+    }
   }
 
   if (req.query.buildingCategory && req.query.buildingCategory !== 'all') {
     filter['formData.buildingCategory'] = req.query.buildingCategory;
+  }
+
+  if (req.query.paymentStatus && req.query.paymentStatus !== 'all') {
+    filter.paymentStatus = req.query.paymentStatus;
   }
 
   return filter;
@@ -304,7 +322,10 @@ const getReports = async (req, res) => {
             approved: { $sum: { $cond: [{ $eq: ['$status', 'Approved'] }, 1, 0] } },
             returned: { $sum: { $cond: [{ $eq: ['$status', 'Returned'] }, 1, 0] } },
             revenue: { $sum: '$formData.totalFee' },
-            landArea: { $sum: '$formData.landArea' }
+            landArea: { $sum: '$formData.landArea' },
+            avgFee: { $avg: '$formData.totalFee' },
+            paid: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'Paid'] }, 1, 0] } },
+            unpaid: { $sum: { $cond: [{ $ne: ['$paymentStatus', 'Paid'] }, 1, 0] } },
           }
         }
       ]),
@@ -319,14 +340,22 @@ const getReports = async (req, res) => {
     ]);
 
     const summary = summaryAgg[0] || {
-      total: 0, pending: 0, inReview: 0, approved: 0, returned: 0, revenue: 0, landArea: 0
+      total: 0, pending: 0, inReview: 0, approved: 0, returned: 0, revenue: 0, landArea: 0, avgFee: 0, paid: 0, unpaid: 0
     };
 
     const byCategory = await PermitApplication.aggregate([
       { $match: filter },
-      { $group: { _id: '$formData.buildingCategory', count: { $sum: 1 }, revenue: { $sum: '$formData.totalFee' } } },
-      { $project: { category: '$_id', count: 1, revenue: 1, _id: 0 } },
-      { $sort: { count: -1 } }
+      {
+        $group: {
+          _id: { $ifNull: ['$formData.buildingCategory', 'Unknown'] },
+          count: { $sum: 1 },
+          revenue: { $sum: '$formData.totalFee' },
+          approved: { $sum: { $cond: [{ $eq: ['$status', 'Approved'] }, 1, 0] } },
+          avgFee: { $avg: '$formData.totalFee' },
+        }
+      },
+      { $project: { category: '$_id', count: 1, revenue: 1, approved: 1, avgFee: 1, _id: 0 } },
+      { $sort: { revenue: -1 } }
     ]);
 
     const byDistrict = await PermitApplication.aggregate([
@@ -347,8 +376,41 @@ const getReports = async (req, res) => {
 
     const byRequestType = await PermitApplication.aggregate([
       { $match: filter },
-      { $group: { _id: '$formData.requestType', count: { $sum: 1 }, revenue: { $sum: '$formData.totalFee' } } },
-      { $project: { requestType: '$_id', count: 1, revenue: 1, _id: 0 } }
+      {
+        $group: {
+          _id: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: [{ $ifNull: ['$formData.requestType', ''] }, ''] },
+                  { $eq: ['$formData.requestType', null] },
+                ],
+              },
+              'New Construction',
+              '$formData.requestType',
+            ],
+          },
+          count: { $sum: 1 },
+          revenue: { $sum: '$formData.totalFee' },
+          approved: { $sum: { $cond: [{ $eq: ['$status', 'Approved'] }, 1, 0] } },
+          avgFee: { $avg: '$formData.totalFee' },
+        }
+      },
+      { $project: { requestType: '$_id', count: 1, revenue: 1, approved: 1, avgFee: 1, _id: 0 } },
+      { $sort: { revenue: -1 } }
+    ]);
+
+    const byPaymentStatus = await PermitApplication.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: { $ifNull: ['$paymentStatus', 'Pending'] },
+          count: { $sum: 1 },
+          revenue: { $sum: '$formData.totalFee' },
+        }
+      },
+      { $project: { paymentStatus: '$_id', count: 1, revenue: 1, _id: 0 } },
+      { $sort: { revenue: -1 } }
     ]);
 
     // Top repetitive applicants (by application count + revenue)
@@ -381,11 +443,15 @@ const getReports = async (req, res) => {
     ]);
 
     const revenueByDistrict = [...byDistrict].sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+    const revenueByCategory = [...byCategory].sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+    const revenueByRequestType = [...byRequestType].sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
     const highestRevenueDistrict = revenueByDistrict[0] || null;
     const lowestRevenueDistrict = revenueByDistrict.length
       ? revenueByDistrict[revenueByDistrict.length - 1]
       : null;
     const mostPermitsDistrict = [...byDistrict].sort((a, b) => (b.count || 0) - (a.count || 0))[0] || null;
+    const topRevenueCategory = revenueByCategory[0] || null;
+    const topRevenueRequestType = revenueByRequestType[0] || null;
 
     const rows = applications.map(app => ({
       applicationId: app.applicationId,
@@ -417,13 +483,18 @@ const getReports = async (req, res) => {
         ...summary,
         highestRevenueDistrict,
         lowestRevenueDistrict,
-        mostPermitsDistrict
+        mostPermitsDistrict,
+        topRevenueCategory,
+        topRevenueRequestType,
       },
       breakdowns: {
         byCategory,
         byDistrict,
         byRequestType,
+        byPaymentStatus,
         revenueByDistrict,
+        revenueByCategory,
+        revenueByRequestType,
         topApplicants
       },
       rows,

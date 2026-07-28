@@ -332,6 +332,7 @@ const StaffApplications = () => {
                                                         {(app.status === 'Pending' || app.status === 'In Review') ? (
                                                             <Link
                                                                 to={`/staff/review/${app._id}`}
+                                                                state={{ from: '/staff/applications' }}
                                                                 className="inline-flex items-center gap-2 bg-navy text-white px-4 py-1.5 rounded-lg text-[11px] font-black no-underline hover:brightness-110 active:scale-95 transition-all shadow-sm shadow-navy/20"
                                                             >
                                                                 Perform Review <ChevronRight size={14} />
@@ -344,7 +345,7 @@ const StaffApplications = () => {
                                                 {visibleColumns.includes('actions') && (
                                                     <td className={`px-6 text-right ${rowDensity === 'compact' ? 'py-3' : 'py-5'}`}>
                                                         <button
-                                                            onClick={() => navigate(`/staff/review/${app._id}`)}
+                                                            onClick={() => navigate(`/staff/review/${app._id}`, { state: { from: '/staff/applications' } })}
                                                             className="p-2 rounded-lg text-text-muted hover:text-navy hover:bg-table-header-bg transition-all"
                                                         >
                                                             <Eye size={16} />

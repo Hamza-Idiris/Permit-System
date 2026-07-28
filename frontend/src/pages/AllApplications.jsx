@@ -530,7 +530,7 @@ const AllApplications = () => {
           {[
             {
               icon: Eye, label: 'View Application Details', color: 'text-navy',
-              onClick: () => { navigate(`/staff/review/${actionMenu.id}`); }
+              onClick: () => { navigate(`/staff/review/${actionMenu.id}`, { state: { from: '/admin/all-permits' } }); }
             },
             {
               icon: Clock, label: 'Set to Pending Review', color: 'text-amber-500',

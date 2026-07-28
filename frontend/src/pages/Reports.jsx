@@ -24,7 +24,15 @@ const RANGE_OPTIONS = [
 ];
 
 const STATUS_OPTIONS = ['all', 'Pending', 'In Review', 'Approved', 'Returned'];
-const REQUEST_TYPES = ['all', 'New Construction', 'Renovation'];
+const REQUEST_TYPES = ['all', 'New Construction', 'Renovation', 'Renew'];
+const PAYMENT_STATUS_OPTIONS = ['all', 'Paid', 'Pending', 'Free'];
+
+const requestTypeLabel = (rt) => {
+  if (!rt || rt === 'New Construction') return 'New';
+  if (rt === 'Renovation') return 'Renovation';
+  if (rt === 'Renew') return 'Renew';
+  return rt;
+};
 
 const StatusBadge = ({ status }) => {
   const map = {
@@ -59,6 +67,7 @@ const Reports = () => {
   const [status, setStatus] = useState('all');
   const [requestType, setRequestType] = useState('all');
   const [buildingCategory, setBuildingCategory] = useState('all');
+  const [paymentStatus, setPaymentStatus] = useState('all');
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -67,6 +76,29 @@ const Reports = () => {
   useEffect(() => {
     if (isStaff && user?.district) setDistrict(user.district);
   }, [isStaff, user?.district]);
+
+  useEffect(() => {
+    if (!token) return;
+    const loadCategories = async () => {
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
+        const [b, r, n] = await Promise.all([
+          axios.get('http://localhost:5000/api/building-types', { headers }),
+          axios.get('http://localhost:5000/api/renovation-types', { headers }),
+          axios.get('http://localhost:5000/api/renew-types', { headers }),
+        ]);
+        const names = [
+          ...(b.data?.data || []).map((t) => t.name),
+          ...(r.data?.data || []).map((t) => t.name),
+          ...(n.data?.data || []).map((t) => t.name),
+        ].filter(Boolean);
+        setCategoryOptions((prev) => [...new Set([...prev, ...names])].sort());
+      } catch {
+        /* keep options from report data */
+      }
+    };
+    loadCategories();
+  }, [token]);
 
   useEffect(() => {
     if (!isAdmin || !token) return;
@@ -104,6 +136,9 @@ const Reports = () => {
       if (buildingCategory && buildingCategory !== 'all') {
         params.buildingCategory = buildingCategory;
       }
+      if (paymentStatus && paymentStatus !== 'all') {
+        params.paymentStatus = paymentStatus;
+      }
 
       const res = await axios.get('http://localhost:5000/api/analytics/reports', {
         headers: { Authorization: `Bearer ${token || localStorage.getItem('token')}` },
@@ -111,29 +146,17 @@ const Reports = () => {
       });
       if (res.data.success) {
         setData(res.data);
-        // Keep a stable category list (don't shrink when filtered)
-        if (!buildingCategory || buildingCategory === 'all') {
-          const cats = (res.data.breakdowns?.byCategory || [])
-            .map((c) => c.category)
-            .filter(Boolean);
-          setCategoryOptions([...new Set(cats)].sort());
-        } else {
-          setCategoryOptions((prev) => {
-            const next = new Set(prev);
-            (res.data.breakdowns?.byCategory || []).forEach((c) => {
-              if (c.category) next.add(c.category);
-            });
-            if (buildingCategory) next.add(buildingCategory);
-            return [...next].sort();
-          });
-        }
+        const cats = (res.data.breakdowns?.byCategory || [])
+          .map((c) => c.category)
+          .filter(Boolean);
+        setCategoryOptions((prev) => [...new Set([...prev, ...cats])].sort());
       }
     } catch (err) {
       console.error('Failed to fetch reports', err);
     } finally {
       setLoading(false);
     }
-  }, [token, range, startDate, endDate, district, status, requestType, buildingCategory, search, apiSection, isAdmin]);
+  }, [token, range, startDate, endDate, district, status, requestType, buildingCategory, paymentStatus, search, apiSection, isAdmin]);
 
   useEffect(() => {
     fetchReports();
@@ -145,15 +168,34 @@ const Reports = () => {
   }, [searchInput]);
 
   const summary = data?.summary || {
-    total: 0, pending: 0, approved: 0, returned: 0, revenue: 0,
+    total: 0, pending: 0, approved: 0, returned: 0, revenue: 0, avgFee: 0,
     highestRevenueDistrict: null, lowestRevenueDistrict: null, mostPermitsDistrict: null,
+    topRevenueCategory: null, topRevenueRequestType: null,
   };
   const rows = data?.rows || [];
   const byDistrict = data?.breakdowns?.byDistrict || [];
   const byCategory = data?.breakdowns?.byCategory || [];
+  const byRequestType = data?.breakdowns?.byRequestType || [];
+  const byPaymentStatus = data?.breakdowns?.byPaymentStatus || [];
   const revenueByDistrict = data?.breakdowns?.revenueByDistrict || [];
+  const revenueByCategory = data?.breakdowns?.revenueByCategory || byCategory;
+  const revenueByRequestType = data?.breakdowns?.revenueByRequestType || byRequestType;
   const topApplicants = data?.breakdowns?.topApplicants || [];
   const usersList = data?.users || [];
+
+  const revenueShare = (amount) => {
+    const total = Number(summary.revenue) || 0;
+    if (!total) return '0%';
+    return `${(((Number(amount) || 0) / total) * 100).toFixed(1)}%`;
+  };
+
+  const getRequestTypeRevenue = (type) => {
+    const row = revenueByRequestType.find((r) => {
+      const label = r.requestType || 'New Construction';
+      return label === type;
+    });
+    return row || { requestType: type, count: 0, revenue: 0, approved: 0, avgFee: 0 };
+  };
 
   const formatCurrency = (val) => {
     const n = Number(val) || 0;
@@ -169,19 +211,21 @@ const Reports = () => {
 
   const handleDownloadCSV = () => {
     const headers = [
-      'Application ID', 'Permit ID', 'Applicant', 'District', 'Category',
-      'Floors', 'Land Area', 'Fee', 'Status', 'Submitted', 'Approved By',
+      'Application ID', 'Permit ID', 'Applicant', 'District', 'Request Type', 'Category',
+      'Floors', 'Land Area', 'Fee', 'Status', 'Payment', 'Submitted', 'Approved By',
     ];
     const csvRows = rows.map((r) => [
       r.applicationId,
       r.permitId,
       r.applicant,
       r.district,
+      r.requestType || 'New Construction',
       r.buildingCategory,
       r.floors === '—' ? '' : r.floors,
       r.landArea,
       r.totalFee,
       r.status,
+      r.paymentStatus || '',
       formatDate(r.submittedAt),
       r.reviewedBy,
     ]);
@@ -212,6 +256,7 @@ const Reports = () => {
       { id: 'applications', label: 'Applications', icon: FileText },
       { id: 'district', label: 'By District', icon: MapPin },
       { id: 'category', label: 'By Category', icon: Layers },
+      { id: 'requestType', label: 'By Request Type', icon: Building2 },
       { id: 'revenue', label: 'Revenue', icon: DollarSign },
       { id: 'applicants', label: 'Top Applicants', icon: Trophy },
     ];
@@ -298,7 +343,7 @@ const Reports = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
                 {isAdmin ? (
                   <div>
                     <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-1.5">District</label>
@@ -333,7 +378,9 @@ const Reports = () => {
                   <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-1.5">Request Type</label>
                   <select value={requestType} onChange={(e) => setRequestType(e.target.value)} className={`w-full ${selectCls}`}>
                     {REQUEST_TYPES.map((t) => (
-                      <option key={t} value={t}>{t === 'all' ? 'All Types' : t}</option>
+                      <option key={t} value={t}>
+                        {t === 'all' ? 'All Types' : requestTypeLabel(t)}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -344,6 +391,15 @@ const Reports = () => {
                     <option value="all">All Categories</option>
                     {categoryOptions.map((c) => (
                       <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-1.5">Payment</label>
+                  <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} className={`w-full ${selectCls}`}>
+                    {PAYMENT_STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>{s === 'all' ? 'All Payments' : s}</option>
                     ))}
                   </select>
                 </div>
@@ -364,7 +420,7 @@ const Reports = () => {
             </div>
 
             {/* Summary cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
               {[
                 {
                   label: 'Total Apps',
@@ -379,6 +435,12 @@ const Reports = () => {
                   sub: null,
                 },
                 {
+                  label: 'Avg Fee',
+                  value: formatCurrency(summary.avgFee),
+                  icon: Layers,
+                  sub: null,
+                },
+                {
                   label: 'Highest Revenue',
                   value: summary.highestRevenueDistrict?.district || '—',
                   icon: TrendingUp,
@@ -387,19 +449,19 @@ const Reports = () => {
                     : null,
                 },
                 {
-                  label: 'Lowest Revenue',
-                  value: summary.lowestRevenueDistrict?.district || '—',
-                  icon: TrendingDown,
-                  sub: summary.lowestRevenueDistrict
-                    ? formatCurrency(summary.lowestRevenueDistrict.revenue)
+                  label: 'Top Category',
+                  value: summary.topRevenueCategory?.category || '—',
+                  icon: Building2,
+                  sub: summary.topRevenueCategory
+                    ? formatCurrency(summary.topRevenueCategory.revenue)
                     : null,
                 },
                 {
-                  label: 'Most Permits',
-                  value: summary.mostPermitsDistrict?.district || '—',
-                  icon: Building2,
-                  sub: summary.mostPermitsDistrict
-                    ? `${summary.mostPermitsDistrict.count} apps`
+                  label: 'Top Request Type',
+                  value: requestTypeLabel(summary.topRevenueRequestType?.requestType),
+                  icon: Trophy,
+                  sub: summary.topRevenueRequestType
+                    ? formatCurrency(summary.topRevenueRequestType.revenue)
                     : null,
                 },
               ].map((card) => (
@@ -454,7 +516,7 @@ const Reports = () => {
                   <table className="w-full text-left border-collapse min-w-[960px]">
                     <thead>
                       <tr className="bg-table-header-bg/50">
-                        {['Application ID', 'Permit ID', 'Applicant', 'District', 'Category', 'Floors', 'Land Area', 'Fee', 'Status', 'Submitted', 'Approved By'].map((h) => (
+                        {['Application ID', 'Permit ID', 'Applicant', 'District', 'Request Type', 'Category', 'Floors', 'Land Area', 'Fee', 'Status', 'Submitted', 'Approved By'].map((h) => (
                           <th key={h} className="py-4 px-5 text-[10px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -466,6 +528,7 @@ const Reports = () => {
                           <td className="py-4 px-5 text-sm font-medium text-text-muted whitespace-nowrap">{r.permitId || '—'}</td>
                           <td className="py-4 px-5 text-sm font-bold text-navy">{r.applicant || '—'}</td>
                           <td className="py-4 px-5 text-sm text-text-muted font-medium">{r.district || '—'}</td>
+                          <td className="py-4 px-5 text-sm font-bold text-navy whitespace-nowrap">{requestTypeLabel(r.requestType)}</td>
                           <td className="py-4 px-5 text-sm text-text-muted font-medium">{r.buildingCategory || '—'}</td>
                           <td className="py-4 px-5 text-sm text-text-muted font-medium">
                             {r.floors && r.floors !== '—' ? r.floors : ''}
@@ -483,7 +546,7 @@ const Reports = () => {
                       ))}
                       {!rows.length && (
                         <tr>
-                          <td colSpan={11} className="py-12 text-center text-text-muted text-sm font-medium">
+                          <td colSpan={12} className="py-12 text-center text-text-muted text-sm font-medium">
                             No applications match the current filters.
                           </td>
                         </tr>
@@ -603,22 +666,96 @@ const Reports = () => {
                   <table className="w-full text-left">
                     <thead>
                       <tr className="bg-table-header-bg/50">
-                        {['Category', 'Count', 'Revenue'].map((h) => (
+                        {['Category', 'Count', 'Approved', 'Avg Fee', 'Revenue', 'Share'].map((h) => (
                           <th key={h} className="py-3 px-5 text-[10px] font-black text-text-muted uppercase tracking-widest">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-color">
                       {byCategory.map((c, i) => (
-                        <tr key={i} className="hover:bg-table-header-bg/30">
+                        <tr
+                          key={i}
+                          className="hover:bg-table-header-bg/30 cursor-pointer"
+                          onClick={() => setBuildingCategory(c.category || 'all')}
+                          title="Filter by this category"
+                        >
                           <td className="py-4 px-5 text-sm font-bold text-navy">{c.category || '—'}</td>
                           <td className="py-4 px-5 text-sm text-text-muted font-medium">{c.count}</td>
+                          <td className="py-4 px-5 text-sm text-text-muted font-medium">{c.approved ?? '—'}</td>
+                          <td className="py-4 px-5 text-sm text-text-muted font-medium">{formatCurrency(c.avgFee)}</td>
                           <td className="py-4 px-5 text-sm font-bold text-navy">{formatCurrency(c.revenue)}</td>
+                          <td className="py-4 px-5 text-sm font-bold text-emerald-600">{revenueShare(c.revenue)}</td>
                         </tr>
                       ))}
                       {!byCategory.length && (
-                        <tr><td colSpan={3} className="py-8 text-center text-text-muted text-sm">No category data.</td></tr>
+                        <tr><td colSpan={6} className="py-8 text-center text-text-muted text-sm">No category data.</td></tr>
                       )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'requestType' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-card-bg rounded-2xl border border-border-color p-6 shadow-sm flex flex-col">
+                  <h3 className="text-lg font-black text-navy mb-4">Revenue Share by Request Type</h3>
+                  <div className="relative flex-1 min-h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={revenueByRequestType.map((r) => ({
+                            name: requestTypeLabel(r.requestType),
+                            value: Number(r.revenue) || 0,
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={85}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {revenueByRequestType.map((_, i) => (
+                            <Cell key={i} fill={pieColors[i % pieColors.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => formatCurrency(value)} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm overflow-hidden lg:col-span-2">
+                  <div className="p-5 border-b border-border-color">
+                    <h3 className="text-base font-black text-navy">New / Renovation / Renew Breakdown</h3>
+                  </div>
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-table-header-bg/50">
+                        {['Request Type', 'Apps', 'Approved', 'Avg Fee', 'Revenue', 'Share'].map((h) => (
+                          <th key={h} className="py-3 px-5 text-[10px] font-black text-text-muted uppercase tracking-widest">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-color">
+                      {['New Construction', 'Renovation', 'Renew'].map((type) => {
+                        const row = getRequestTypeRevenue(type);
+                        return (
+                          <tr
+                            key={type}
+                            className="hover:bg-table-header-bg/30 cursor-pointer"
+                            onClick={() => setRequestType(type)}
+                            title="Filter by this request type"
+                          >
+                            <td className="py-4 px-5 text-sm font-bold text-navy">{requestTypeLabel(type)}</td>
+                            <td className="py-4 px-5 text-sm text-text-muted font-medium">{row.count || 0}</td>
+                            <td className="py-4 px-5 text-sm text-text-muted font-medium">{row.approved || 0}</td>
+                            <td className="py-4 px-5 text-sm text-text-muted font-medium">{formatCurrency(row.avgFee)}</td>
+                            <td className="py-4 px-5 text-sm font-bold text-navy">{formatCurrency(row.revenue)}</td>
+                            <td className="py-4 px-5 text-sm font-bold text-emerald-600">{revenueShare(row.revenue)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -627,6 +764,42 @@ const Reports = () => {
 
             {activeTab === 'revenue' && (
               <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {['New Construction', 'Renovation', 'Renew'].map((type, idx) => {
+                    const row = getRequestTypeRevenue(type);
+                    const accents = [
+                      { bg: 'bg-blue-500/10', text: 'text-blue-600' },
+                      { bg: 'bg-amber-500/10', text: 'text-amber-600' },
+                      { bg: 'bg-emerald-500/10', text: 'text-emerald-600' },
+                    ][idx];
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setRequestType(type)}
+                        className="bg-card-bg rounded-2xl border border-border-color p-6 shadow-sm text-left hover:border-navy/30 transition-all"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className={`p-2.5 rounded-xl ${accents.bg}`}>
+                            <DollarSign size={18} className={accents.text} />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">
+                              {requestTypeLabel(type)} Revenue
+                            </p>
+                            <p className="text-[11px] font-bold text-text-muted">
+                              {row.count || 0} apps · {revenueShare(row.revenue)} share
+                            </p>
+                          </div>
+                        </div>
+                        <p className={`text-3xl font-black tracking-tighter ${accents.text}`}>
+                          {formatCurrency(row.revenue)}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-card-bg rounded-2xl border border-border-color p-6 shadow-sm">
                     <div className="flex items-center gap-3 mb-4">
@@ -666,6 +839,57 @@ const Reports = () => {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-card-bg rounded-2xl border border-border-color p-6 shadow-sm">
+                    <h3 className="text-lg font-black text-navy mb-6">Revenue by Request Type</h3>
+                    <div className="h-[260px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={['New Construction', 'Renovation', 'Renew'].map((type) => {
+                            const row = getRequestTypeRevenue(type);
+                            return {
+                              name: requestTypeLabel(type),
+                              revenue: Number(row.revenue) || 0,
+                            };
+                          })}
+                          margin={{ top: 0, right: 8, left: 0, bottom: 0 }}
+                        >
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
+                          <Tooltip contentStyle={tooltipStyle} formatter={(value) => [formatCurrency(value), 'Revenue']} />
+                          <Bar dataKey="revenue" radius={[6, 6, 6, 6]} barSize={42}>
+                            {[0, 1, 2].map((i) => (
+                              <Cell key={i} fill={pieColors[i % pieColors.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="bg-card-bg rounded-2xl border border-border-color p-6 shadow-sm">
+                    <h3 className="text-lg font-black text-navy mb-6">Revenue by Building Category</h3>
+                    <div className="h-[260px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={revenueByCategory.slice(0, 8)} margin={{ top: 0, right: 8, left: 0, bottom: 40 }}>
+                          <XAxis
+                            dataKey="category"
+                            axisLine={false}
+                            tickLine={false}
+                            interval={0}
+                            angle={-25}
+                            textAnchor="end"
+                            tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 700 }}
+                          />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
+                          <Tooltip contentStyle={tooltipStyle} formatter={(value) => [formatCurrency(value), 'Revenue']} />
+                          <Bar dataKey="revenue" radius={[6, 6, 6, 6]} barSize={28} fill={darkMode ? '#4f8ef7' : '#0a2647'} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="bg-card-bg rounded-2xl border border-border-color p-6 lg:col-span-2 shadow-sm">
                     <h3 className="text-lg font-black text-navy mb-6">Revenue by District</h3>
@@ -692,31 +916,77 @@ const Reports = () => {
                   </div>
                   <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm overflow-hidden">
                     <div className="p-5 border-b border-border-color">
-                      <h3 className="text-base font-black text-navy">Sorted by Revenue</h3>
+                      <h3 className="text-base font-black text-navy">Payment Status</h3>
                     </div>
                     <div className="overflow-x-auto max-h-[320px]">
                       <table className="w-full text-left">
                         <thead>
                           <tr className="bg-table-header-bg/50 sticky top-0">
-                            {['District', 'Count', 'Revenue'].map((h) => (
+                            {['Status', 'Count', 'Revenue'].map((h) => (
                               <th key={h} className="py-3 px-4 text-[10px] font-black text-text-muted uppercase tracking-widest">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border-color">
-                          {revenueByDistrict.map((d, i) => (
-                            <tr key={i} className="hover:bg-table-header-bg/30">
-                              <td className="py-3 px-4 text-sm font-bold text-navy">{d.district || '—'}</td>
-                              <td className="py-3 px-4 text-sm text-text-muted font-medium">{d.count}</td>
-                              <td className="py-3 px-4 text-sm font-bold text-navy">{formatCurrency(d.revenue)}</td>
+                          {byPaymentStatus.map((p, i) => (
+                            <tr
+                              key={i}
+                              className="hover:bg-table-header-bg/30 cursor-pointer"
+                              onClick={() => setPaymentStatus(p.paymentStatus || 'all')}
+                            >
+                              <td className="py-3 px-4 text-sm font-bold text-navy">{p.paymentStatus || '—'}</td>
+                              <td className="py-3 px-4 text-sm text-text-muted font-medium">{p.count}</td>
+                              <td className="py-3 px-4 text-sm font-bold text-navy">{formatCurrency(p.revenue)}</td>
                             </tr>
                           ))}
-                          {!revenueByDistrict.length && (
-                            <tr><td colSpan={3} className="py-8 text-center text-text-muted text-sm">No revenue data.</td></tr>
+                          {!byPaymentStatus.length && (
+                            <tr><td colSpan={3} className="py-8 text-center text-text-muted text-sm">No payment data.</td></tr>
                           )}
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                </div>
+
+                <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm overflow-hidden">
+                  <div className="p-5 border-b border-border-color flex justify-between items-center">
+                    <h3 className="text-base font-black text-navy">Top Categories by Revenue</h3>
+                    <span className="text-[11px] font-black text-text-muted uppercase tracking-widest">
+                      Click a row to filter
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left min-w-[720px]">
+                      <thead>
+                        <tr className="bg-table-header-bg/50">
+                          {['#', 'Category', 'Apps', 'Avg Fee', 'Revenue', 'Share'].map((h) => (
+                            <th key={h} className="py-3 px-5 text-[10px] font-black text-text-muted uppercase tracking-widest">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border-color">
+                        {revenueByCategory.map((c, i) => (
+                          <tr
+                            key={i}
+                            className="hover:bg-table-header-bg/30 cursor-pointer"
+                            onClick={() => {
+                              setBuildingCategory(c.category || 'all');
+                              setActiveTab('applications');
+                            }}
+                          >
+                            <td className="py-3 px-5 text-sm font-bold text-text-muted">{i + 1}</td>
+                            <td className="py-3 px-5 text-sm font-bold text-navy">{c.category || '—'}</td>
+                            <td className="py-3 px-5 text-sm text-text-muted font-medium">{c.count}</td>
+                            <td className="py-3 px-5 text-sm text-text-muted font-medium">{formatCurrency(c.avgFee)}</td>
+                            <td className="py-3 px-5 text-sm font-bold text-navy">{formatCurrency(c.revenue)}</td>
+                            <td className="py-3 px-5 text-sm font-bold text-emerald-600">{revenueShare(c.revenue)}</td>
+                          </tr>
+                        ))}
+                        {!revenueByCategory.length && (
+                          <tr><td colSpan={6} className="py-8 text-center text-text-muted text-sm">No category revenue data.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
