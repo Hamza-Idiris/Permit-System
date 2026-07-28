@@ -7,17 +7,20 @@ import Login from './pages/Login';
 import ApplicantWorkflow from './pages/ApplicantWorkflow';
 import MyApplications from './pages/MyApplications';
 import Notifications from './pages/Notifications';
-import StaffNotifications from './pages/StaffNotifications';
 import StaffDashboard from './pages/StaffDashboard';
 import StaffReview from './pages/StaffReview';
+import StaffApplications from './pages/StaffApplications';
+import StaffNewApplication from './pages/StaffNewApplication';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import UserManagement from './pages/UserManagement';
 import DistrictManagement from './pages/DistrictManagement';
 import DistrictBranchesManagement from './pages/DistrictBranchesManagement';
-import BuildingTypesManagement from './pages/BuildingTypesManagement';
-import RenovationManagement from './pages/RenovationManagement';
+import PermitTypesManagement from './pages/PermitTypesManagement';
+import NotificationsHub from './pages/NotificationsHub';
 import AllApplications from './pages/AllApplications';
 import Reports from './pages/Reports';
+import VerifyPermit from './pages/VerifyPermit';
+import InspectorScans from './pages/InspectorScans';
 import Profile from './pages/Profile';
 import ApprovedPermits from './pages/ApprovedPermits';
 import ForgotPassword from './pages/ForgotPassword';
@@ -93,16 +96,13 @@ function App() {
                   <DistrictBranchesManagement />
                 </ProtectedRoute>
               } />
-              <Route path="/admin/building-types" element={
+              <Route path="/admin/permit-types" element={
                 <ProtectedRoute allowedRoles={['superadmin']}>
-                  <BuildingTypesManagement />
+                  <PermitTypesManagement />
                 </ProtectedRoute>
               } />
-              <Route path="/admin/renovation" element={
-                <ProtectedRoute allowedRoles={['superadmin']}>
-                  <RenovationManagement />
-                </ProtectedRoute>
-              } />
+              <Route path="/admin/building-types" element={<Navigate to="/admin/permit-types" replace />} />
+              <Route path="/admin/renovation" element={<Navigate to="/admin/permit-types" replace />} />
               <Route path="/admin/applicants" element={
                 <ProtectedRoute allowedRoles={['superadmin']}>
                   <UserManagement />
@@ -123,11 +123,42 @@ function App() {
                   <Reports />
                 </ProtectedRoute>
               } />
+              <Route path="/admin/verify" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <VerifyPermit />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/notifications" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <NotificationsHub />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/send-notification" element={<Navigate to="/admin/notifications" replace />} />
+              <Route path="/admin/inspector-scans" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <InspectorScans />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/new-application" element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <StaffNewApplication />
+                </ProtectedRoute>
+              } />
 
               {/* Staff Routes */}
               <Route path="/staff/dashboard" element={
                 <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
                   <StaffDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/staff/applications" element={
+                <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
+                  <StaffApplications />
+                </ProtectedRoute>
+              } />
+              <Route path="/staff/new-application" element={
+                <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
+                  <StaffNewApplication />
                 </ProtectedRoute>
               } />
               <Route path="/staff/review/:id" element={
@@ -140,9 +171,25 @@ function App() {
                   <ApprovedPermits />
                 </ProtectedRoute>
               } />
+              <Route path="/staff/reports" element={
+                <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
+                  <Reports />
+                </ProtectedRoute>
+              } />
+              <Route path="/staff/verify" element={
+                <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
+                  <VerifyPermit />
+                </ProtectedRoute>
+              } />
+              <Route path="/staff/send-notification" element={<Navigate to="/staff/notifications" replace />} />
+              <Route path="/staff/inspector-scans" element={
+                <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
+                  <InspectorScans />
+                </ProtectedRoute>
+              } />
               <Route path="/staff/notifications" element={
                 <ProtectedRoute allowedRoles={['staff', 'superadmin']}>
-                  <StaffNotifications />
+                  <NotificationsHub />
                 </ProtectedRoute>
               } />
 

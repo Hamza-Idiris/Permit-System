@@ -65,7 +65,7 @@ const DistrictManagement = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.supervisor) {
-            alert('Fadlan dooro kormeeraha degmada (Please select a staff supervisor for this district).');
+            alert('Please select a staff supervisor for this district.');
             return;
         }
         try {
@@ -95,7 +95,7 @@ const DistrictManagement = () => {
             setDeleteConfirmId(null);
             fetchData();
         } catch (err) {
-            alert('Tirtiristu way fashilantay');
+            alert('Delete failed');
             setDeleteConfirmId(null);
         }
     };
@@ -381,7 +381,7 @@ const DistrictManagement = () => {
                                     <AlertTriangle size={24} />
                                 </div>
                                 <h3 className="text-xl font-black text-navy tracking-tight transition-colors">
-                                    Tirtir Degmada
+                                    Delete District
                                 </h3>
                             </div>
                             <p className="text-[14px] text-text-muted font-bold leading-relaxed transition-colors">
@@ -399,7 +399,7 @@ const DistrictManagement = () => {
                                 onClick={confirmDelete}
                                 className="px-8 py-2.5 bg-rose-500 text-white text-[13px] font-black rounded-xl hover:brightness-110 shadow-lg shadow-rose-500/20 transition-all active:scale-95 uppercase tracking-widest"
                             >
-                                Haa, Tirtir
+                                Yes, Delete
                             </button>
                         </div>
                     </div>

@@ -18,19 +18,52 @@ const generateApplicationId = async () => {
 
 // @desc    Submit new permit application
 // @route   POST /api/permits/apply
-// @access  Private 
+// @access  Private (applicant | staff | superadmin)
 const applyForPermit = async (req, res) => {
   try {
     const {
       fullName, phone, email,
       plotId, district, buildingCategory,
-      floors, landArea, requestType
+      floors, landArea, requestType, applicantId
     } = req.body;
 
     const files = req.files || {};
 
     if (!files.nationalId || !files.ownershipDocs) {
       return res.status(400).json({ success: false, message: 'Mandatory documents are missing' });
+    }
+
+    // Staff / superadmin may submit on behalf of an applicant
+    let targetUserId = req.user._id;
+    let applicantName = fullName;
+    let applicantPhone = phone;
+    let applicantEmail = email;
+    const isOnBehalf = req.user.role === 'staff' || req.user.role === 'superadmin';
+
+    if (isOnBehalf && applicantId) {
+      const applicant = await User.findById(applicantId);
+      if (!applicant || applicant.role !== 'applicant') {
+        return res.status(400).json({ success: false, message: 'Invalid applicant selected' });
+      }
+      targetUserId = applicant._id;
+      applicantName = fullName || applicant.fullName;
+      applicantPhone = phone || applicant.phone;
+      applicantEmail = email || applicant.email;
+    } else if (req.user.role === 'staff' && !applicantId) {
+      return res.status(400).json({ success: false, message: 'Please select or register an applicant' });
+    }
+
+    // Staff can only create applications for their assigned district
+    let applicationDistrict = district;
+    if (req.user.role === 'staff') {
+      if (!req.user.district) {
+        return res.status(400).json({ success: false, message: 'Your account has no district assigned' });
+      }
+      applicationDistrict = req.user.district;
+    }
+
+    if (!applicationDistrict) {
+      return res.status(400).json({ success: false, message: 'District is required' });
     }
 
     const documents = {
@@ -47,7 +80,7 @@ const applyForPermit = async (req, res) => {
       const floorsNum = Number(floors) || 1;
 
       // Use a more flexible matching for building categories
-      const category = buildingCategory.toLowerCase();
+      const category = (buildingCategory || '').toLowerCase();
 
       if (category.includes('jiingad') || category.includes('bulukeeti')) {
         totalFee = areaNum * 0.5;
@@ -64,25 +97,36 @@ const applyForPermit = async (req, res) => {
     const applicationId = await generateApplicationId();
 
     const application = await PermitApplication.create({
-      user: req.user._id,
+      user: targetUserId,
       applicationId,
       status: 'Pending',
-      district,
+      district: applicationDistrict,
       formData: {
-        fullName, phone, email, plotId, district, buildingCategory, floors, landArea, totalFee, requestType: requestType || 'New Construction'
+        fullName: applicantName,
+        phone: applicantPhone,
+        email: applicantEmail,
+        plotId,
+        district: applicationDistrict,
+        buildingCategory,
+        floors,
+        landArea,
+        totalFee,
+        requestType: requestType || 'New Construction'
       },
       documents
     });
 
-    // Create automatic notification for the user
+    // Notify the applicant (owner of the application)
     await Notification.create({
-      user: req.user._id,
-      message: "Codsigaaga si guul leh ayaa loo diray. Fadlan sug inta laga hubinayo xogtaada.",
+      user: targetUserId,
+      message: isOnBehalf && targetUserId.toString() !== req.user._id.toString()
+        ? `Your application (#${application.applicationId}) was submitted by district staff. Please wait while it is reviewed.`
+        : "Your application was submitted successfully. Please wait while your information is reviewed.",
       type: 'Applied',
       relatedId: application._id
     });
 
-    // Notify district staff about the new application
+    // Notify district staff about the new application (skip the submitting staff)
     try {
       const staffMembers = await User.find({
         role: 'staff',
@@ -90,9 +134,10 @@ const applyForPermit = async (req, res) => {
       });
 
       for (const staff of staffMembers) {
+        if (staff._id.toString() === req.user._id.toString()) continue;
         await Notification.create({
           user: staff._id,
-          message: `Codsi cusub (#${application.applicationId}) ayaa laga soo gudbiyay degmadaada (${application.district}).`,
+          message: `A new application (#${application.applicationId}) was submitted for your district (${application.district}).`,
           type: 'Info',
           relatedId: application._id
         });
@@ -153,7 +198,7 @@ const updateApplication = async (req, res) => {
     // Create automatic notification for the applicant
     await Notification.create({
       user: req.user._id,
-      message: `Codsigaaga ${application.applicationId} dib ayaa loo saxay oo la gudbiyay.`,
+      message: `Your application ${application.applicationId} was corrected and resubmitted.`,
       type: 'Applied',
       relatedId: application._id
     });
@@ -170,7 +215,7 @@ const updateApplication = async (req, res) => {
       for (const staff of staffAndAdmins) {
         await Notification.create({
           user: staff._id,
-          message: `Codsiga ${application.applicationId} ee degmada ${application.district} dib ayaa loo saxay oo la soo gudbiyay.`,
+          message: `Application ${application.applicationId} for district ${application.district} was corrected and resubmitted.`,
           type: 'Alert',
           relatedId: application._id
         });
@@ -426,7 +471,7 @@ const reviewApplication = async (req, res) => {
     if (newStatus === 'Approved') {
       await Notification.create({
         user: application.user,
-        message: `Hambalyo! Codsigaaga ${application.applicationId} waa la ansixiyay. Hadda waad soo degsan kartaa shatigaaga.`,
+        message: `Congratulations! Your application ${application.applicationId} has been approved. You can now download your permit.`,
         type: 'Approved',
         relatedId: application._id
       });
@@ -434,14 +479,14 @@ const reviewApplication = async (req, res) => {
       // Notify the staff who approved it (activity history)
       await Notification.create({
         user: req.user._id,
-        message: `Waxaad ansixisay codsiga #${application.applicationId} ee degmada ${application.district}.`,
+        message: `You approved application #${application.applicationId} for district ${application.district}.`,
         type: 'Success',
         relatedId: application._id
       });
     } else if (newStatus === 'Returned') {
       await Notification.create({
         user: application.user,
-        message: `Codsigaaga ${application.applicationId} dib ayaa loo soo celiyay. Sababta: ${application.staffRemarks}`,
+        message: `Your application ${application.applicationId} was returned. Reason: ${application.staffRemarks}`,
         type: 'Returned',
         relatedId: application._id
       });
@@ -449,7 +494,7 @@ const reviewApplication = async (req, res) => {
       // Notify the staff who returned it
       await Notification.create({
         user: req.user._id,
-        message: `Waxaad dib u soo celisay codsiga #${application.applicationId}. Sababta: ${application.staffRemarks}`,
+        message: `You returned application #${application.applicationId}. Reason: ${application.staffRemarks}`,
         type: 'Alert',
         relatedId: application._id
       });
@@ -525,6 +570,253 @@ const updateExpiryDate = async (req, res) => {
   }
 };
 
+// @desc    Verify permit by permitId, applicationId, or QR JSON payload
+// @route   POST /api/permits/verify  |  GET /api/permits/verify/:code
+// @access  Private (staff, superadmin, inspector)
+const verifyPermit = async (req, res) => {
+  try {
+    let code = req.params.code || req.body.code || req.body.permitId || req.query.code || '';
+    code = String(code).trim();
+
+    // If full QR JSON pasted, extract permitId
+    if (code.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(code);
+        code = parsed.permitId || parsed.applicationId || code;
+      } catch (_) { /* keep raw */ }
+    }
+
+    if (!code) {
+      return res.status(400).json({ success: false, message: 'Permit ID or QR code data is required' });
+    }
+
+    let application = await PermitApplication.findOne({
+      $or: [
+        { permitId: { $regex: new RegExp(`^${code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+        { applicationId: { $regex: new RegExp(`^${code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }
+      ]
+    })
+      .populate('user', 'fullName email phone')
+      .populate('reviewedBy', 'fullName role');
+
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'No permit found for this ID' });
+    }
+
+    // Staff can only verify permits in their district
+    if (req.user.role === 'staff' && application.district !== req.user.district) {
+      return res.status(403).json({ success: false, message: 'This permit is outside your district' });
+    }
+
+    let qrPayload = null;
+    if (application.qrData) {
+      try { qrPayload = JSON.parse(application.qrData); } catch (_) { qrPayload = application.qrData; }
+    }
+
+    const now = new Date();
+    const expired = application.expiryDate ? new Date(application.expiryDate) < now : false;
+
+    res.json({
+      success: true,
+      data: {
+        valid: application.status === 'Approved' && !expired,
+        status: application.status,
+        expired,
+        permitId: application.permitId,
+        applicationId: application.applicationId,
+        district: application.district,
+        applicant: application.user?.fullName || application.formData?.fullName,
+        phone: application.user?.phone || application.formData?.phone,
+        plotId: application.formData?.plotId,
+        buildingCategory: application.formData?.buildingCategory,
+        floors: application.formData?.floors,
+        landArea: application.formData?.landArea,
+        totalFee: application.formData?.totalFee,
+        approvalDate: application.approvalDate,
+        expiryDate: application.expiryDate,
+        approvedBy: application.reviewedBy?.fullName || null,
+        qrPayload,
+        application
+      }
+    });
+  } catch (error) {
+    console.error('Verify Permit Error:', error);
+    res.status(500).json({ success: false, message: 'Server Error verifying permit' });
+  }
+};
+
+// @desc    List expired approved permits eligible for renew (applicant)
+// @route   GET /api/permits/renewable
+// @access  Private (applicant, staff, superadmin)
+const getRenewablePermits = async (req, res) => {
+  try {
+    const now = new Date();
+    const filter = {
+      status: 'Approved',
+      expiryDate: { $lt: now }
+    };
+
+    if (req.user.role === 'applicant') {
+      filter.user = req.user._id;
+    } else if (req.user.role === 'staff') {
+      filter.district = req.user.district;
+    } else if (req.query.userId) {
+      filter.user = req.query.userId;
+    }
+
+    const apps = await PermitApplication.find(filter)
+      .sort({ expiryDate: -1 })
+      .populate('user', 'fullName phone email')
+      .select('applicationId permitId district formData expiryDate approvalDate documents user createdAt');
+
+    res.json({ success: true, count: apps.length, data: apps });
+  } catch (error) {
+    console.error('Renewable list error:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @desc    Renew an expired approved permit (copy data, new application, Renew fee)
+// @route   POST /api/permits/renew/:id
+// @access  Private (applicant owns it | staff | superadmin)
+const renewPermit = async (req, res) => {
+  try {
+    const original = await PermitApplication.findById(req.params.id);
+    if (!original) {
+      return res.status(404).json({ success: false, message: 'Original permit not found' });
+    }
+
+    if (original.status !== 'Approved') {
+      return res.status(400).json({ success: false, message: 'Only approved permits can be renewed' });
+    }
+    if (!original.expiryDate || new Date(original.expiryDate) >= new Date()) {
+      return res.status(400).json({ success: false, message: 'Permit is not expired yet' });
+    }
+
+    if (req.user.role === 'applicant' && original.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized to renew this permit' });
+    }
+    if (req.user.role === 'staff' && original.district !== req.user.district) {
+      return res.status(403).json({ success: false, message: 'Outside your district' });
+    }
+
+    const RenewType = require('../models/RenewType');
+    const { resolveDiscountPercent } = require('./discountController');
+
+    const category = original.formData.buildingCategory;
+    const landArea = Number(original.formData.landArea) || 0;
+    const floors = Number(original.formData.floors) || 1;
+
+    let renewType = await RenewType.findOne({ name: { $regex: new RegExp(`^${category}$`, 'i') } });
+    if (!renewType) {
+      // fallback: first renew type or use building-type style default
+      renewType = await RenewType.findOne().sort({ createdAt: 1 });
+    }
+
+    let totalFee = 0;
+    if (req.body.totalFee !== undefined && !isNaN(Number(req.body.totalFee))) {
+      totalFee = Number(req.body.totalFee);
+    } else if (renewType) {
+      const mult = Number(renewType.feeMultiplier) || 0;
+      totalFee = renewType.isPerFloor ? landArea * mult * floors : landArea * mult;
+      const discountPct = await resolveDiscountPercent('Renew', renewType.name);
+      if (discountPct > 0) totalFee = totalFee * (1 - discountPct / 100);
+    } else {
+      totalFee = landArea * 0.5;
+    }
+    totalFee = Math.round(totalFee * 100) / 100;
+
+    const applicationId = await generateApplicationId();
+
+    const application = await PermitApplication.create({
+      user: original.user,
+      applicationId,
+      status: 'Pending',
+      district: original.district,
+      renewedFrom: original._id,
+      formData: {
+        ...original.formData.toObject?.() || original.formData,
+        requestType: 'Renew',
+        buildingCategory: renewType?.name || category,
+        totalFee
+      },
+      documents: {
+        nationalId: original.documents.nationalId,
+        ownershipDocs: original.documents.ownershipDocs
+      },
+      paymentStatus: 'Paid'
+    });
+
+    await Notification.create({
+      user: original.user,
+      message: `Your renew application (#${application.applicationId}) for expired permit ${original.permitId || original.applicationId} was submitted successfully.`,
+      type: 'Applied',
+      relatedId: application._id
+    });
+
+    try {
+      const staffMembers = await User.find({ role: 'staff', district: application.district });
+      for (const staff of staffMembers) {
+        await Notification.create({
+          user: staff._id,
+          message: `Renew application (#${application.applicationId}) submitted for district ${application.district}.`,
+          type: 'Info',
+          relatedId: application._id
+        });
+      }
+    } catch (_) { /* ignore */ }
+
+    res.status(201).json({ success: true, data: application, renewedFrom: original.applicationId });
+  } catch (error) {
+    console.error('Renew Permit Error:', error);
+    res.status(500).json({ success: false, message: 'Server Error renewing permit' });
+  }
+};
+
+// @desc    Quote renew fee without creating application
+// @route   GET /api/permits/renew/:id/quote
+const quoteRenewFee = async (req, res) => {
+  try {
+    const original = await PermitApplication.findById(req.params.id);
+    if (!original) return res.status(404).json({ success: false, message: 'Permit not found' });
+
+    const RenewType = require('../models/RenewType');
+    const { resolveDiscountPercent } = require('./discountController');
+
+    const category = original.formData.buildingCategory;
+    const landArea = Number(original.formData.landArea) || 0;
+    const floors = Number(original.formData.floors) || 1;
+    let renewType = await RenewType.findOne({ name: { $regex: new RegExp(`^${category}$`, 'i') } });
+    if (!renewType) renewType = await RenewType.findOne().sort({ createdAt: 1 });
+
+    let baseFee = 0;
+    if (renewType) {
+      const mult = Number(renewType.feeMultiplier) || 0;
+      baseFee = renewType.isPerFloor ? landArea * mult * floors : landArea * mult;
+    } else {
+      baseFee = landArea * 0.5;
+    }
+    const discountPct = renewType ? await resolveDiscountPercent('Renew', renewType.name) : 0;
+    const totalFee = Math.round(baseFee * (1 - discountPct / 100) * 100) / 100;
+
+    res.json({
+      success: true,
+      data: {
+        baseFee: Math.round(baseFee * 100) / 100,
+        discountPercent: discountPct,
+        totalFee,
+        renewType: renewType?.name || category,
+        landArea,
+        floors,
+        originalApplicationId: original.applicationId,
+        permitId: original.permitId
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
 module.exports = {
   applyForPermit,
   updateApplication,
@@ -533,5 +825,9 @@ module.exports = {
   getApplicationById,
   getMyTransactions,
   reviewApplication,
-  updateExpiryDate
+  updateExpiryDate,
+  verifyPermit,
+  getRenewablePermits,
+  renewPermit,
+  quoteRenewFee
 };

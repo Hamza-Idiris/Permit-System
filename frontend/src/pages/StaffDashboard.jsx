@@ -1,143 +1,53 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import {
-    Clock, CheckCircle2, CornerDownLeft, XCircle, MoreVertical,
-    AlertTriangle, Eye, RefreshCw, FileSearch, UserPlus, Undo2,
-    Calendar, UserCheck, Loader2, RotateCw, Trash2, Search, Bell, Download, Filter, ChevronRight, Settings2, Settings
+    Clock, CheckCircle2, CornerDownLeft, FileSearch,
+    ClipboardList, QrCode, BarChart3, Plus, MapPin, ArrowRight
 } from 'lucide-react';
-import ConfigDrawer from '../components/ConfigDrawer';
 import TopHeader from '../components/TopHeader';
 import LoadingScreen from '../components/LoadingScreen';
 import { useTheme } from '../context/ThemeContext';
 import { useWebSocket } from '../context/WebSocketContext';
 
-const statusConfig = {
-    Pending: { label: 'PENDING', bg: 'bg-amber-500/10', color: 'text-amber-500', dot: 'bg-amber-500' },
-    'In Review': { label: 'IN REVIEW', bg: 'bg-blue-500/10', color: 'text-blue-500', dot: 'bg-blue-500' },
-    Approved: { label: 'APPROVED', bg: 'bg-emerald-500/10', color: 'text-emerald-500', dot: 'bg-emerald-500' },
-    Returned: { label: 'RETURNED', bg: 'bg-rose-500/10', color: 'text-rose-500', dot: 'bg-rose-500' },
-};
-
-const StatusBadge = ({ status }) => {
-    const statusClasses = {
-        Pending: 'bg-amber-500/10 text-amber-500',
-        'In Review': 'bg-blue-500/10 text-blue-500',
-        Approved: 'bg-emerald-500/10 text-emerald-500',
-        Returned: 'bg-rose-500/10 text-rose-500',
-    };
-    const cls = statusClasses[status] || 'bg-table-header-bg text-text-muted';
-    return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black tracking-wider uppercase ${cls} border border-border-color/10`}>
-            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
-            {status}
-        </span>
-    );
-};
-
-const PermitTypeBadge = ({ type }) => (
-    <span className="bg-table-header-bg text-text-muted px-2.5 py-1 rounded-md text-[10px] font-black tracking-widest uppercase border border-border-color">
-        {type || '—'}
-    </span>
-);
-
-const StatCard = ({ icon: Icon, label, value, color, glow, statusKey, isActive, onClick }) => (
+const StatCard = ({ icon: Icon, label, value, color, onClick }) => (
     <button
-        onClick={() => onClick(statusKey)}
-        className={`bg-card-bg p-7 rounded-[28px] border relative overflow-hidden group text-left w-full transition-all duration-300 flex flex-col ${isActive
-            ? 'border-navy/30 ring-2 ring-navy/20 scale-[1.02] shadow-lg bg-navy/5'
-            : 'border-border-color hover:border-navy/20'
-            }`}
+        type="button"
+        onClick={onClick}
+        className="bg-card-bg p-7 rounded-[28px] border border-border-color hover:border-navy/20 text-left w-full transition-all duration-300 flex flex-col group"
     >
-        <div className="absolute -right-4 -top-4 w-28 h-28 bg-current opacity-[0.02] rounded-full group-hover:scale-150 transition-transform duration-700" />
         <div className="flex items-center justify-between mb-6 w-full">
-            <div className={`p-3 rounded-2xl ${color} bg-opacity-20 ${glow} shrink-0`}>
+            <div className={`p-3 rounded-2xl ${color} bg-opacity-20 shrink-0`}>
                 <Icon size={20} className="text-white" />
             </div>
-            <div className="flex items-center gap-2">
-                {isActive && (
-                    <span className="text-[9px] font-black text-white bg-navy px-2 py-0.5 rounded-full uppercase tracking-widest shadow-sm">
-                        Active
-                    </span>
-                )}
-                <span className="text-[10px] font-black text-text-muted uppercase tracking-widest transition-colors">{statLabelMap[statusKey] || label}</span>
-            </div>
+            <ArrowRight size={16} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
         <div className="mt-auto w-full">
-            <h4 className="text-4xl font-black text-navy tracking-tighter transition-colors">{value ?? '—'}</h4>
-            <p className="text-[11px] font-black text-text-muted mt-1 uppercase tracking-widest opacity-60">
-                {statusKey === 'all' ? 'Total' : statusKey} Application
-            </p>
-            <div className={`h-1.5 rounded-full mt-5 ${color} transition-all duration-700 ${isActive ? 'w-full opacity-40' : 'w-10 opacity-20 group-hover:w-full'
-                }`} />
+            <h4 className="text-4xl font-black text-navy tracking-tighter">{value ?? '—'}</h4>
+            <p className="text-[11px] font-black text-text-muted mt-1 uppercase tracking-widest opacity-70">{label}</p>
+            <div className={`h-1.5 rounded-full mt-5 ${color} w-10 opacity-20 group-hover:w-full transition-all duration-700`} />
         </div>
     </button>
 );
 
-const statLabelMap = {
-    all: 'All Applications',
-    pending: 'Total Pending',
-    approved: 'Approved',
-    returned: 'Returned'
-};
-
-const ALL_COLUMNS = [
-    { id: 'applicationId', label: 'Application ID', mandatory: true },
-    { id: 'applicantName', label: 'Applicant Name' },
-    { id: 'applicantPhone', label: 'Phone Number' },
-    { id: 'permitType', label: 'Permit Type' },
-    { id: 'submissionDate', label: 'Submission Date' },
-    { id: 'expiryDate', label: 'Expiry Date' },
-    { id: 'status', label: 'Status' },
-    { id: 'actions', label: 'Actions', mandatory: true }
-];
 const StaffDashboard = () => {
     const { user } = useAuth();
     const { wsData } = useWebSocket();
-    const { darkMode } = useTheme();
+    useTheme();
     const navigate = useNavigate();
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [activeFilter, setActiveFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
-
-    // Grid Config State
-    const [showConfigDrawer, setShowConfigDrawer] = useState(false);
-    const [visibleColumns, setVisibleColumns] = useState(ALL_COLUMNS.map(c => c.id));
-    const [rowDensity, setRowDensity] = useState('comfortable');
-
-    useEffect(() => {
-        const savedCols = localStorage.getItem('staff_app_columns');
-        const savedDensity = localStorage.getItem('staff_app_density');
-        if (savedCols) {
-            try {
-                const parsed = JSON.parse(savedCols);
-                const mandatory = ALL_COLUMNS.filter(c => c.mandatory).map(c => c.id);
-                const final = Array.from(new Set([...parsed, ...mandatory]));
-                setVisibleColumns(final);
-            } catch (e) {
-                console.error('Failed to parse saved columns', e);
-            }
-        }
-        if (savedDensity) setRowDensity(savedDensity);
-    }, []);
-
-    const handleApplyView = () => {
-        localStorage.setItem('staff_app_columns', JSON.stringify(visibleColumns));
-        localStorage.setItem('staff_app_density', rowDensity);
-        setShowConfigDrawer(false);
-    };
 
     const fetchData = useCallback(async () => {
         try {
-            // Fetch applications
             const appRes = await axios.get('http://localhost:5000/api/permits/all', {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
-            setApplications(appRes.data.data);
+            setApplications(appRes.data.data || []);
             setLoading(false);
         } catch (err) {
             console.error('Fetch Data Error:', err);
@@ -145,13 +55,10 @@ const StaffDashboard = () => {
         }
     }, []);
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     useEffect(() => {
         if (wsData && (wsData.type === 'GLOBAL_PERMIT_APPLICATION_UPDATED' || wsData.type === 'PERMIT_APPLICATION_UPDATED')) {
-            // Re-fetch applications on real-time update
             fetchData();
         }
     }, [wsData, fetchData]);
@@ -159,32 +66,16 @@ const StaffDashboard = () => {
     if (loading) return <LoadingScreen />;
 
     const stats = {
-        pending: applications.filter(app => app.status === 'Pending').length,
         all: applications.length,
+        pending: applications.filter(app => app.status === 'Pending' || app.status === 'In Review').length,
         approved: applications.filter(app => app.status === 'Approved').length,
-        returned: applications.filter(app => app.status === 'Returned').length
+        returned: applications.filter(app => app.status === 'Returned').length,
+        revenue: applications.reduce((sum, app) => sum + (Number(app.formData?.totalFee) || 0), 0)
     };
 
-    const formatDate = (dateString) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    };
-
-    const filteredApplications = applications.filter(app => {
-        const name = (app.user?.fullName || app.formData?.fullName || '').toLowerCase();
-        const id = (app.applicationId || '').toLowerCase();
-        const matchSearch = !searchTerm || name.includes(searchTerm.toLowerCase()) || id.includes(searchTerm.toLowerCase());
-
-        let matchStatus = true;
-        if (activeFilter === 'pending') matchStatus = app.status === 'Pending';
-        else if (activeFilter === 'approved') matchStatus = app.status === 'Approved';
-        else if (activeFilter === 'returned') matchStatus = app.status === 'Returned';
-
-        return matchSearch && matchStatus;
-    });
+    const recent = [...applications]
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 5);
 
     return (
         <div className="flex min-h-screen bg-bg-soft font-sans transition-colors duration-300">
@@ -195,193 +86,91 @@ const StaffDashboard = () => {
                     breadcrumbs={['Staff', 'Dashboard']}
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}
-                    placeholder="Search applications..."
+                    placeholder="Quick search..."
                 />
 
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                    <div className="flex items-start justify-between mb-7">
+                    <div className="flex items-start justify-between mb-7 gap-4">
                         <div>
-                            <h1 className="text-3xl font-black text-navy tracking-tight mb-1">
-                                Staff Dashboard
-                            </h1>
-                            <p className="text-sm text-text-muted font-bold">Management and oversight for permit applications.</p>
+                            <h1 className="text-3xl font-black text-navy tracking-tight mb-1">District Overview</h1>
+                            <p className="text-sm text-text-muted font-bold flex items-center gap-2">
+                                <MapPin size={14} />
+                                {user?.district || 'Your district'} — stats only. Review applications from the Applications page.
+                            </p>
                         </div>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setShowConfigDrawer(true)}
-                                className="flex items-center gap-2 bg-card-bg border border-border-color rounded-xl px-5 py-2.5 text-[13px] font-bold text-text-muted hover:text-navy transition-all"
-                            >
-                                <Settings2 size={15} /> Configure View
-                            </button>
-                            <button
-                                className="flex items-center gap-2 bg-navy text-white rounded-xl px-5 py-2.5 text-[13px] font-bold hover:brightness-110 transition-all shadow-lg shadow-navy/20"
-                            >
-                                <Download size={15} /> Generate Report
-                            </button>
+                        <button
+                            onClick={() => navigate('/staff/new-application')}
+                            className="flex items-center gap-2 bg-navy text-white rounded-xl px-5 py-2.5 text-[13px] font-bold hover:brightness-110 transition-all shadow-lg shadow-navy/20"
+                        >
+                            <Plus size={15} /> New Application
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <StatCard icon={FileSearch} label="All Applications" value={stats.all} color="bg-indigo-500" onClick={() => navigate('/staff/applications')} />
+                        <StatCard icon={Clock} label="Pending Review" value={stats.pending} color="bg-amber-500" onClick={() => navigate('/staff/applications')} />
+                        <StatCard icon={CheckCircle2} label="Approved" value={stats.approved} color="bg-emerald-500" onClick={() => navigate('/staff/approved')} />
+                        <StatCard icon={CornerDownLeft} label="Returned" value={stats.returned} color="bg-rose-500" onClick={() => navigate('/staff/applications')} />
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        <div className="bg-card-bg border border-border-color rounded-2xl p-6">
+                            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">District Revenue</p>
+                            <p className="text-3xl font-black text-navy">${stats.revenue.toLocaleString()}</p>
+                            <p className="text-[12px] text-text-muted font-bold mt-2">From applications in {user?.district || 'your district'}</p>
                         </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-7">
-                        <StatCard
-                            icon={FileSearch} label="All Applications" value={stats.all}
-                            color="bg-indigo-500" glow="stat-glow-indigo"
-                            statusKey="all" isActive={activeFilter === 'all'}
-                            onClick={() => setActiveFilter('all')}
-                        />
-                        <StatCard
-                            icon={Clock} label="Total Pending" value={stats.pending}
-                            color="bg-amber-500" glow="stat-glow-amber"
-                            statusKey="pending" isActive={activeFilter === 'pending'}
-                            onClick={(key) => setActiveFilter(activeFilter === key ? 'all' : key)}
-                        />
-                        <StatCard
-                            icon={CheckCircle2} label="Approved" value={stats.approved}
-                            color="bg-emerald-500" glow="stat-glow-emerald"
-                            statusKey="approved" isActive={activeFilter === 'approved'}
-                            onClick={(key) => setActiveFilter(activeFilter === key ? 'all' : key)}
-                        />
-                        <StatCard
-                            icon={CornerDownLeft} label="Returned" value={stats.returned}
-                            color="bg-rose-500" glow="stat-glow-rose"
-                            statusKey="returned" isActive={activeFilter === 'returned'}
-                            onClick={(key) => setActiveFilter(activeFilter === key ? 'all' : key)}
-                        />
-                    </div>
-
-                    <div className="flex justify-end items-center mb-4">
-                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
-                            Showing <span className="text-navy">{filteredApplications.length}</span> {activeFilter !== 'all' ? `${activeFilter} ` : ''}Applications
-                        </p>
-                    </div>
-
-                    <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm overflow-hidden transition-colors duration-300">
-                        <div className="flex items-center justify-between p-5 border-b border-border-color">
-                            <h3 className="text-xs font-black text-navy uppercase tracking-[0.2em]">
-                                {activeFilter === 'all' ? 'All Applications' : activeFilter + ' Applications'}
-                            </h3>
-                            <div className="flex items-center gap-4">
-                                <span className="text-[11px] text-text-muted font-bold uppercase tracking-wider">
-                                    {filteredApplications.length} Results
-                                </span>
-                                <button
-                                    onClick={() => { setSearchTerm(''); setActiveFilter('all'); }}
-                                    title="Reset Filters"
-                                    className="p-2 rounded-lg border border-border-color text-text-muted hover:text-navy hover:bg-table-header-bg transition-all"
-                                >
-                                    <Filter size={14} />
-                                </button>
+                        <button onClick={() => navigate('/staff/verify')} className="bg-card-bg border border-border-color rounded-2xl p-6 text-left hover:border-navy/30 transition-all group">
+                            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center mb-4">
+                                <QrCode size={20} />
                             </div>
-                        </div>
+                            <p className="font-black text-navy text-[15px]">Verify Permit / QR</p>
+                            <p className="text-[12px] text-text-muted font-bold mt-1">Check permit ID or QR payload</p>
+                        </button>
+                        <button onClick={() => navigate('/staff/reports')} className="bg-card-bg border border-border-color rounded-2xl p-6 text-left hover:border-navy/30 transition-all group">
+                            <div className="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center mb-4">
+                                <BarChart3 size={20} />
+                            </div>
+                            <p className="font-black text-navy text-[15px]">District Reports</p>
+                            <p className="text-[12px] text-text-muted font-bold mt-1">Filter and download district data</p>
+                        </button>
+                    </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr className="bg-table-header-bg/50 border-b border-border-color">
-                                        {ALL_COLUMNS.filter(col => visibleColumns.includes(col.id)).map(col => (
-                                            <th key={col.id} className={`px-6 py-4 text-left text-[10px] font-black text-text-muted uppercase tracking-widest ${rowDensity === 'compact' ? 'py-3' : 'py-5'}`}>
-                                                {col.label}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loading ? (
-                                        <tr>
-                                            <td colSpan={visibleColumns.length} className="px-6 py-16 text-center text-text-muted text-sm font-bold italic">
-                                                Gathering application data...
-                                            </td>
-                                        </tr>
-                                    ) : filteredApplications.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={visibleColumns.length} className="px-6 py-16 text-center text-text-muted text-sm font-bold">
-                                                No {activeFilter !== 'all' ? activeFilter : ''} applications found.
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        filteredApplications.map((app, idx) => (
-                                            <tr
-                                                key={app._id}
-                                                className={`border-b border-border-color transition-colors hover:bg-table-header-bg/30 ${idx % 2 === 0 ? 'bg-card-bg' : 'bg-table-header-bg/10'}`}
-                                            >
-                                                {visibleColumns.includes('applicationId') && (
-                                                    <td className={`px-6 text-[13px] font-black text-navy ${rowDensity === 'compact' ? 'py-3' : 'py-5'}`}>
-                                                        #{app.applicationId}
-                                                    </td>
-                                                )}
-                                                {visibleColumns.includes('applicantName') && (
-                                                    <td className={`px-6 text-[13px] font-bold text-text-main ${rowDensity === 'compact' ? 'py-3' : 'py-5'}`}>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-lg bg-navy/5 border border-navy/10 flex items-center justify-center text-[11px] font-black text-navy uppercase">
-                                                                {(app.user?.fullName || app.formData?.fullName || 'A')[0]}
-                                                            </div>
-                                                            {app.user?.fullName || app.formData?.fullName || 'Unknown'}
-                                                        </div>
-                                                    </td>
-                                                )}
-                                                {visibleColumns.includes('applicantPhone') && (
-                                                    <td className={`px-6 text-[13px] font-bold text-text-muted ${rowDensity === 'compact' ? 'py-3' : 'py-5'}`}>
-                                                        {app.user?.phone || app.formData?.phone || '—'}
-                                                    </td>
-                                                )}
-                                                {visibleColumns.includes('permitType') && (
-                                                    <td className={`px-6 ${rowDensity === 'compact' ? 'py-3' : 'py-5'}`}>
-                                                        <PermitTypeBadge type={app.formData?.buildingCategory} />
-                                                    </td>
-                                                )}
-                                                {visibleColumns.includes('submissionDate') && (
-                                                    <td className={`px-6 text-[13px] font-bold text-text-muted whitespace-nowrap ${rowDensity === 'compact' ? 'py-3' : 'py-5'}`}>
-                                                        {formatDate(app.createdAt)}
-                                                    </td>
-                                                )}
-                                                {visibleColumns.includes('expiryDate') && (
-                                                    <td className={`px-6 text-[13px] font-black text-rose-500 whitespace-nowrap ${rowDensity === 'compact' ? 'py-3' : 'py-5'}`}>
-                                                        {app.expiryDate ? formatDate(app.expiryDate) : '—'}
-                                                    </td>
-                                                )}
-                                                {visibleColumns.includes('status') && (
-                                                    <td className={`px-6 ${rowDensity === 'compact' ? 'py-3' : 'py-5'}`}>
-                                                        {(app.status === 'Pending' || app.status === 'In Review') ? (
-                                                            <Link
-                                                                to={`/staff/review/${app._id}`}
-                                                                className="inline-flex items-center gap-2 bg-navy text-white px-4 py-1.5 rounded-lg text-[11px] font-black no-underline hover:brightness-110 active:scale-95 transition-all shadow-sm shadow-navy/20"
-                                                            >
-                                                                Perform Review <ChevronRight size={14} />
-                                                            </Link>
-                                                        ) : (
-                                                            <StatusBadge status={app.status} />
-                                                        )}
-                                                    </td>
-                                                )}
-                                                {visibleColumns.includes('actions') && (
-                                                    <td className={`px-6 text-right ${rowDensity === 'compact' ? 'py-3' : 'py-5'}`}>
-                                                        <button
-                                                            onClick={() => navigate(`/staff/review/${app._id}`)}
-                                                            className="p-2 rounded-lg text-text-muted hover:text-navy hover:bg-table-header-bg transition-all"
-                                                        >
-                                                            <Eye size={16} />
-                                                        </button>
-                                                    </td>
-                                                )}
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                    <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm overflow-hidden">
+                        <div className="flex items-center justify-between p-5 border-b border-border-color">
+                            <h3 className="text-xs font-black text-navy uppercase tracking-[0.2em]">Recent Activity</h3>
+                            <button
+                                onClick={() => navigate('/staff/applications')}
+                                className="text-[11px] font-black text-navy uppercase tracking-wider flex items-center gap-1 hover:underline"
+                            >
+                                <ClipboardList size={13} /> Open Applications
+                            </button>
+                        </div>
+                        <div className="divide-y divide-border-color">
+                            {recent.length === 0 ? (
+                                <p className="p-8 text-center text-text-muted text-sm font-bold">No applications in your district yet.</p>
+                            ) : (
+                                recent.map(app => (
+                                    <div key={app._id} className="px-5 py-4 flex items-center justify-between gap-4">
+                                        <div className="min-w-0">
+                                            <p className="text-[13px] font-black text-navy truncate">#{app.applicationId}</p>
+                                            <p className="text-[12px] text-text-muted font-bold truncate">
+                                                {app.user?.fullName || app.formData?.fullName} · {app.formData?.buildingCategory}
+                                            </p>
+                                        </div>
+                                        <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${
+                                            app.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500' :
+                                            app.status === 'Returned' ? 'bg-rose-500/10 text-rose-500' :
+                                            'bg-amber-500/10 text-amber-500'
+                                        }`}>
+                                            {app.status}
+                                        </span>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>
             </main>
-
-            <ConfigDrawer
-                isOpen={showConfigDrawer}
-                onClose={() => setShowConfigDrawer(false)}
-                columns={ALL_COLUMNS}
-                visibleColumns={visibleColumns}
-                setVisibleColumns={setVisibleColumns}
-                rowDensity={rowDensity}
-                setRowDensity={setRowDensity}
-                onApply={handleApplyView}
-            />
         </div>
     );
 };

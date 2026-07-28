@@ -34,7 +34,7 @@ const permitApplicationSchema = new mongoose.Schema({
     required: true
   },
   formData: {
-    requestType: { type: String, enum: ['New Construction', 'Renovation'], default: 'New Construction' },
+    requestType: { type: String, enum: ['New Construction', 'Renovation', 'Renew'], default: 'New Construction' },
     fullName: { type: String, required: true },
     phone: { type: String, required: true },
     email: { type: String, required: true },
@@ -79,6 +79,14 @@ const permitApplicationSchema = new mongoose.Schema({
   },
   lastPermitId: {
     type: String
+  },
+  lastQrData: {
+    type: String
+  },
+  renewedFrom: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PermitApplication',
+    default: null
   },
   type: String
 

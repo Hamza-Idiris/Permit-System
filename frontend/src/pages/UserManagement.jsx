@@ -6,7 +6,7 @@ import Sidebar from '../components/Sidebar';
 import {
   Search, Filter, ChevronDown, UserPlus, MapPin, MoreVertical,
   CheckCircle2, AlertCircle, Edit3, Trash2, Eye, EyeOff,
-  Settings2, X, Info
+  Settings2, X, Info, Power, Ban, KeyRound
 } from 'lucide-react';
 import ConfigDrawer from '../components/ConfigDrawer';
 import LoadingScreen from '../components/LoadingScreen';
@@ -19,7 +19,7 @@ const ALL_COLUMNS = [
   { id: 'phone', label: 'Phone Number' },
   { id: 'role', label: 'Assigned Role' },
   { id: 'district', label: 'Primary District' },
-  { id: 'workStatus', label: 'Work Status' },
+  { id: 'workStatus', label: 'Account Status' },
   { id: 'actions', label: 'Actions', mandatory: true }
 ];
 
@@ -146,8 +146,42 @@ const UserManagement = () => {
       setDeleteConfirmId(null);
       fetchData();
     } catch (err) {
-      alert('Tirtiristu way fashilantay');
+      alert('Delete failed');
       setDeleteConfirmId(null);
+    }
+  };
+
+  const handleToggleStatus = async (targetUser) => {
+    try {
+      const config = { headers: { 'Authorization': `Bearer ${token}` } };
+      const nextActive = targetUser.isActive === false ? true : false;
+      await axios.put(
+        `http://localhost:5000/api/users/${targetUser._id}/status`,
+        { isActive: nextActive },
+        config
+      );
+      fetchData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update account status');
+    }
+  };
+
+  const handleResetPassword = async (targetUser) => {
+    if (!window.confirm(`Reset password for ${targetUser.fullName}?`)) return;
+    try {
+      const config = { headers: { 'Authorization': `Bearer ${token}` } };
+      const res = await axios.put(
+        `http://localhost:5000/api/users/${targetUser._id}/reset-password`,
+        {},
+        config
+      );
+      if (res.data.temporaryPassword) {
+        alert(`Temporary password: ${res.data.temporaryPassword}`);
+      } else {
+        alert(res.data.message || 'Password reset successfully');
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to reset password');
     }
   };
 
@@ -278,7 +312,7 @@ const UserManagement = () => {
                       {visibleColumns.includes('phone') && <th className="pb-5 pt-3 px-6 min-w-[150px]">Phone Number</th>}
                       {visibleColumns.includes('role') && <th className="pb-5 pt-3 px-6 text-center min-w-[150px]">Assigned Role</th>}
                       {visibleColumns.includes('district') && <th className="pb-5 pt-3 px-6 min-w-[180px]">Primary District</th>}
-                      {visibleColumns.includes('workStatus') && <th className="pb-5 pt-3 px-6 min-w-[140px]">Work Status</th>}
+                      {visibleColumns.includes('workStatus') && <th className="pb-5 pt-3 px-6 min-w-[140px]">Account Status</th>}
                       {visibleColumns.includes('actions') && <th className="pb-5 pt-3 text-right w-24"></th>}
                     </tr>
                   </thead>
@@ -298,15 +332,10 @@ const UserManagement = () => {
                     ) : (
                       filteredUsers.map((u, idx) => {
                         const initials = u.fullName ? u.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'US';
-                        let workStatus = 'ACTIVE';
-                        let dotColor = 'bg-[#10B981]';
-                        let textColor = 'text-[#10B981]';
-
-                        if (idx % 5 === 2) {
-                          workStatus = 'OFFLINE'; dotColor = 'bg-[#94A3B8]'; textColor = 'text-[#94A3B8]';
-                        } else if (idx % 5 === 4) {
-                          workStatus = 'SUSPENDED'; dotColor = 'bg-[#EF4444]'; textColor = 'text-[#EF4444]';
-                        }
+                        const isActive = u.isActive !== false;
+                        const workStatus = isActive ? 'ACTIVE' : 'INACTIVE';
+                        const dotColor = isActive ? 'bg-[#10B981]' : 'bg-[#EF4444]';
+                        const textColor = isActive ? 'text-[#10B981]' : 'text-[#EF4444]';
 
                         const avatarThemes = darkMode ? [
                           { bg: 'bg-indigo-500/20', text: 'text-indigo-400' },
@@ -379,7 +408,24 @@ const UserManagement = () => {
 
                             {visibleColumns.includes('actions') && (
                               <td className="py-6 text-right">
-                                <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => handleToggleStatus(u)}
+                                    className={`p-2 rounded-xl transition-colors ${isActive
+                                      ? 'text-text-muted hover:text-rose-500 hover:bg-rose-50'
+                                      : 'text-text-muted hover:text-emerald-500 hover:bg-emerald-50'
+                                      }`}
+                                    title={isActive ? 'Deactivate account' : 'Activate account'}
+                                  >
+                                    {isActive ? <Ban size={15} /> : <Power size={15} />}
+                                  </button>
+                                  <button
+                                    onClick={() => handleResetPassword(u)}
+                                    className="p-2 text-text-muted hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-colors"
+                                    title="Reset password"
+                                  >
+                                    <KeyRound size={15} />
+                                  </button>
                                   <button
                                     onClick={() => {
                                       setEditingUser(u);
@@ -395,12 +441,14 @@ const UserManagement = () => {
                                       setIsModalOpen(true);
                                     }}
                                     className="p-2 text-text-muted hover:text-navy hover:bg-table-header-bg rounded-xl transition-colors"
+                                    title="Edit user"
                                   >
                                     <Edit3 size={15} />
                                   </button>
                                   <button
                                     onClick={() => handleDelete(u._id)}
                                     className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                                    title="Delete user"
                                   >
                                     <Trash2 size={15} />
                                   </button>
@@ -542,7 +590,7 @@ const UserManagement = () => {
                   <AlertCircle size={24} />
                 </div>
                 <h3 className="text-xl font-black text-navy tracking-tight transition-colors">
-                  Tirtir Personnel
+                  Delete Personnel
                 </h3>
               </div>
               <p className="text-[14px] text-text-muted font-bold leading-relaxed transition-colors">
@@ -560,7 +608,7 @@ const UserManagement = () => {
                 onClick={confirmDelete}
                 className="px-8 py-2.5 bg-rose-500 text-white text-[13px] font-black rounded-xl hover:brightness-110 shadow-lg shadow-rose-500/20 transition-all active:scale-95 uppercase tracking-widest"
               >
-                Haa, Tirtir
+                Yes, Delete
               </button>
             </div>
           </div>

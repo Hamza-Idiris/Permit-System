@@ -7,47 +7,52 @@ import {
   Briefcase,
   FileText,
   BarChart3,
-  LogOut,
   Bell,
   CheckCircle,
   MapPin,
   Building2,
-  Users,
-  Menu,
   GitBranch,
   X,
-  Wrench,
+  Layers,
+  QrCode,
+  FilePlus2,
+  ScanLine,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import axios from 'axios';
 
-// ─── Admin Nav Config ─────────────────────────────────────────────────────────
 const ADMIN_NAV = [
   { icon: LayoutDashboard, label: 'Dashboard', to: '/admin/dashboard' },
   { icon: Briefcase, label: 'Staff Management', to: '/admin/staff' },
   { icon: MapPin, label: 'District Management', to: '/admin/districts' },
   { icon: GitBranch, label: 'District Branches', to: '/admin/district-branches' },
-  { icon: Building2, label: 'New Construction', to: '/admin/building-types' },
-  { icon: Wrench, label: 'Renovation', to: '/admin/renovation' },
+  { icon: Layers, label: 'Permit Types', to: '/admin/permit-types' },
   { icon: ClipboardList, label: 'Applicant Management', to: '/admin/applicants' },
   { icon: Shield, label: 'Inspector Management', to: '/admin/inspectors' },
   { icon: FileText, label: 'All Applications', to: '/admin/all-permits' },
+  { icon: FilePlus2, label: 'New Application', to: '/admin/new-application' },
+  { icon: QrCode, label: 'Verify Permit', to: '/admin/verify' },
+  { icon: ScanLine, label: 'Inspector Scans', to: '/admin/inspector-scans' },
+  { icon: Bell, label: 'Notifications', to: '/admin/notifications', badge: true },
   { icon: BarChart3, label: 'Reports', to: '/admin/reports' },
 ];
 
-// ─── Staff Nav Config ─────────────────────────────────────────────────────────
 const STAFF_NAV = [
   { icon: LayoutDashboard, label: 'Dashboard', to: '/staff/dashboard' },
+  { icon: ClipboardList, label: 'Applications', to: '/staff/applications' },
+  { icon: FilePlus2, label: 'New Application', to: '/staff/new-application' },
   { icon: CheckCircle, label: 'Approved Permits', to: '/staff/approved' },
+  { icon: QrCode, label: 'Verify Permit', to: '/staff/verify' },
+  { icon: BarChart3, label: 'Reports', to: '/staff/reports' },
   { icon: Bell, label: 'Notifications', to: '/staff/notifications', badge: true },
 ];
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
 const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const { user, logout } = useAuth();
+  const { darkMode } = useTheme();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'superadmin';
-  const isStaff = user?.role === 'staff';
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -75,7 +80,6 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
 
   return (
     <>
-      {/* Mobile overlay */}
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -85,40 +89,48 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
 
       <aside
         className={`
-          w-[220px] shrink-0 bg-[#0d1b2a] flex flex-col text-white min-h-screen z-50
-          fixed lg:static inset-y-0 left-0 transition-transform duration-300
+          w-[220px] shrink-0 flex flex-col min-h-screen z-50
+          fixed lg:static inset-y-0 left-0 transition-all duration-300
           ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'}
+          ${darkMode
+            ? 'bg-[#0d1b2a] text-white border-r border-white/5'
+            : 'bg-white text-navy border-r border-gray-200 shadow-[1px_0_0_0_rgba(0,0,0,0.03)]'
+          }
         `}
       >
-        {/* Mobile close button */}
         <button
           onClick={() => setIsMobileMenuOpen(false)}
-          className="absolute top-4 right-4 lg:hidden p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-all"
+          className={`absolute top-4 right-4 lg:hidden p-1.5 rounded-lg transition-all ${
+            darkMode
+              ? 'text-white/40 hover:text-white hover:bg-white/5'
+              : 'text-gray-400 hover:text-navy hover:bg-gray-100'
+          }`}
         >
           <X size={18} />
         </button>
 
-        {/* ── Brand ─────────────────────────────────────────── */}
-        <div className="px-6 pt-8 pb-8 border-b border-white/5">
+        <div className={`px-6 pt-8 pb-8 border-b ${darkMode ? 'border-white/5' : 'border-gray-100'}`}>
           <div className="flex items-center gap-3 mb-2">
             <div className="w-9 h-9 rounded-xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
               <Building2 size={18} className="text-white" />
             </div>
             <div>
-              <p className="font-black text-[14px] leading-tight text-white">Sovereign Ledger</p>
-              <p className="text-[9px] text-white/35 font-black uppercase tracking-[0.2em] mt-0.5">Urban Permit Authority</p>
+              <p className={`font-black text-[14px] leading-tight ${darkMode ? 'text-white' : 'text-navy'}`}>
+                Sovereign Ledger
+              </p>
+              <p className={`text-[9px] font-black uppercase tracking-[0.2em] mt-0.5 ${darkMode ? 'text-white/35' : 'text-gray-400'}`}>
+                Urban Permit Authority
+              </p>
             </div>
           </div>
-          {/* Role badge */}
-          <div className="mt-3 px-2 py-1 bg-white/5 rounded-lg inline-flex items-center gap-1.5">
+          <div className={`mt-3 px-2 py-1 rounded-lg inline-flex items-center gap-1.5 ${darkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
             <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
-            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+            <span className={`text-[9px] font-black uppercase tracking-widest ${darkMode ? 'text-white/40' : 'text-gray-500'}`}>
               {isAdmin ? 'Super Admin Console' : 'Staff Console'}
             </span>
           </div>
         </div>
 
-        {/* ── Navigation ────────────────────────────────────── */}
         <nav className="flex-1 px-3 pt-5 space-y-0.5 overflow-y-auto">
           {NAV.map(({ icon: Icon, label, to, badge }) => (
             <NavLink
@@ -126,9 +138,12 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
               to={to}
               onClick={() => setIsMobileMenuOpen?.(false)}
               className={({ isActive }) =>
-                `flex items-center justify-between px-4 py-2.5 rounded-xl text-[13px] font-bold transition-all no-underline group ${isActive
-                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-                  : 'text-white/45 hover:text-white hover:bg-white/6'
+                `flex items-center justify-between px-4 py-2.5 rounded-xl text-[13px] font-bold transition-all no-underline group ${
+                  isActive
+                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
+                    : darkMode
+                      ? 'text-white/45 hover:text-white hover:bg-white/6'
+                      : 'text-gray-500 hover:text-navy hover:bg-gray-100'
                 }`
               }
             >
@@ -145,16 +160,22 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
           ))}
         </nav>
 
-        {/* ── Footer: User + Logout ─────────────────────────── */}
-        <div className="px-3 pb-6 pt-4 border-t border-white/5 space-y-1">
-          {/* User info card */}
+        <div className={`px-3 pb-6 pt-4 border-t space-y-1 ${darkMode ? 'border-white/5' : 'border-gray-100'}`}>
           <div className="flex items-center gap-3 px-4 py-3 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/10 flex items-center justify-center text-[12px] font-black text-white shrink-0">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-black shrink-0 ${
+              darkMode
+                ? 'bg-white/10 border border-white/10 text-white'
+                : 'bg-navy/5 border border-navy/10 text-navy'
+            }`}>
               {user?.fullName?.[0]?.toUpperCase() || 'U'}
             </div>
             <div className="overflow-hidden">
-              <p className="text-[12px] font-black text-white truncate leading-none capitalize">{user?.fullName || 'User'}</p>
-              <p className="text-[9px] text-white/35 font-black uppercase tracking-widest mt-0.5 truncate">{user?.role}</p>
+              <p className={`text-[12px] font-black truncate leading-none capitalize ${darkMode ? 'text-white' : 'text-navy'}`}>
+                {user?.fullName || 'User'}
+              </p>
+              <p className={`text-[9px] font-black uppercase tracking-widest mt-0.5 truncate ${darkMode ? 'text-white/35' : 'text-gray-400'}`}>
+                {user?.role}
+              </p>
             </div>
           </div>
         </div>

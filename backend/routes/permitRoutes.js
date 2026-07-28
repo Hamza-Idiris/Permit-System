@@ -12,7 +12,11 @@ const {
   getApplicationById,
   getMyTransactions,
   reviewApplication,
-  updateExpiryDate
+  updateExpiryDate,
+  verifyPermit,
+  getRenewablePermits,
+  renewPermit,
+  quoteRenewFee
 } = require('../controllers/permitController');
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 
@@ -42,11 +46,16 @@ const cpUpload = upload.fields([
   { name: 'eia', maxCount: 1 }
 ]);
 
-router.post('/apply', protect, authorizeRoles('applicant', 'superadmin'), cpUpload, applyForPermit);
+router.post('/apply', protect, authorizeRoles('applicant', 'staff', 'superadmin'), cpUpload, applyForPermit);
 router.put('/:id', protect, authorizeRoles('applicant', 'superadmin'), cpUpload, updateApplication);
 router.get('/my-applications', protect, authorizeRoles('applicant', 'superadmin'), getMyApplications);
 router.get('/my-transactions', protect, authorizeRoles('applicant', 'superadmin'), getMyTransactions);
 router.get('/all', protect, authorizeRoles('staff', 'superadmin', 'inspector'), getAllApplications);
+router.get('/renewable', protect, authorizeRoles('applicant', 'staff', 'superadmin'), getRenewablePermits);
+router.get('/renew/:id/quote', protect, authorizeRoles('applicant', 'staff', 'superadmin'), quoteRenewFee);
+router.post('/renew/:id', protect, authorizeRoles('applicant', 'staff', 'superadmin'), renewPermit);
+router.get('/verify/:code', protect, authorizeRoles('staff', 'superadmin', 'inspector'), verifyPermit);
+router.post('/verify', protect, authorizeRoles('staff', 'superadmin', 'inspector'), verifyPermit);
 router.get('/:id', protect, authorizeRoles('applicant', 'staff', 'superadmin', 'inspector'), getApplicationById);
 router.put('/:id/review', protect, authorizeRoles('staff', 'superadmin'), reviewApplication);
 router.put('/:id/expiry', protect, authorizeRoles('staff', 'superadmin'), updateExpiryDate);

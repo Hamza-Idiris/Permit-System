@@ -1,6 +1,8 @@
 import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import QRCode from 'qrcode';
+import { jsPDF } from 'jspdf';
 import AuthContext from '../context/AuthContext';
 import {
     ArrowLeft, Bell, Check, X as XIcon, MapPin, Download,
@@ -25,6 +27,7 @@ const StaffReview = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
+    const [qrDataUrl, setQrDataUrl] = useState(null);
 
     // Lightbox / Modal State
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -44,7 +47,7 @@ const StaffReview = () => {
 
     const handleUpdateExpiry = async () => {
         if (!newExpiryDate) {
-            setError('Fadlan dooro taariikh dhicitaan oo sax ah.');
+            setError('Please select a valid expiry date.');
             return;
         }
 
@@ -52,7 +55,7 @@ const StaffReview = () => {
         today.setHours(0, 0, 0, 0);
         const selected = new Date(newExpiryDate);
         if (selected < today) {
-            setError('Taariikhda dhicitaanka ma noqon karto mid tagto ah (Expiry date cannot be in the past).');
+            setError('Expiry date cannot be in the past.');
             return;
         }
 
@@ -64,7 +67,7 @@ const StaffReview = () => {
             const res = await axios.put(`http://localhost:5000/api/permits/${id}/expiry`, { expiryDate: newExpiryDate }, config);
 
             if (res.data.success) {
-                setSuccessMsg('Taariikhda dhicitaanka waa la cusbooneysiiyay si guul leh!');
+                setSuccessMsg('Expiry date updated successfully!');
                 setApplication(prev => ({
                     ...prev,
                     expiryDate: res.data.data.expiryDate,
@@ -75,7 +78,7 @@ const StaffReview = () => {
             }
         } catch (err) {
             console.error('Failed to update expiry date', err);
-            setError(err.response?.data?.message || 'Waa ku guuldareystay in la cusbooneysiiyo taariikhda dhicitaanka.');
+            setError(err.response?.data?.message || 'Failed to update expiry date.');
         } finally {
             setIsUpdatingExpiry(false);
         }
@@ -91,7 +94,7 @@ const StaffReview = () => {
                 }
             } catch (err) {
                 console.error('Failed to fetch', err);
-                setError('Xogta codsiga lama heli karo.');
+                setError('Unable to load application data.');
             } finally {
                 setLoading(false);
             }
@@ -99,9 +102,76 @@ const StaffReview = () => {
         fetchApplication();
     }, [id, token]);
 
+    useEffect(() => {
+        const generateQr = async () => {
+            if (application?.status !== 'Approved') {
+                setQrDataUrl(null);
+                return;
+            }
+            const payload = application.qrData || application.permitId;
+            if (!payload) {
+                setQrDataUrl(null);
+                return;
+            }
+            try {
+                const url = await QRCode.toDataURL(String(payload), {
+                    width: 256,
+                    margin: 1,
+                    errorCorrectionLevel: 'M'
+                });
+                setQrDataUrl(url);
+            } catch (err) {
+                console.error('Failed to generate QR code', err);
+                setQrDataUrl(null);
+            }
+        };
+        generateQr();
+    }, [application]);
+
+    const handleDownloadQrPng = () => {
+        if (!qrDataUrl) return;
+        const link = document.createElement('a');
+        link.href = qrDataUrl;
+        link.download = `permit-qr-${application.permitId || application.applicationId || 'code'}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleDownloadCertificatePdf = () => {
+        if (!qrDataUrl || !application) return;
+
+        const doc = new jsPDF();
+        const applicantName = application.user?.fullName || application.formData?.fullName || 'N/A';
+        const district = application.formData?.district || application.district || 'N/A';
+        const plotId = application.formData?.plotId || 'N/A';
+        const category = application.formData?.buildingCategory || 'N/A';
+        const approvalDate = application.approvalDate
+            ? new Date(application.approvalDate).toLocaleDateString()
+            : 'N/A';
+        const expiryDate = application.expiryDate
+            ? new Date(application.expiryDate).toLocaleDateString()
+            : 'N/A';
+
+        doc.setFontSize(18);
+        doc.text('Building Permit Certificate', 105, 24, { align: 'center' });
+        doc.setFontSize(11);
+        doc.text(`Permit ID: ${application.permitId || 'N/A'}`, 20, 45);
+        doc.text(`Applicant: ${applicantName}`, 20, 55);
+        doc.text(`District: ${district}`, 20, 65);
+        doc.text(`Plot ID: ${plotId}`, 20, 75);
+        doc.text(`Building Category: ${category}`, 20, 85);
+        doc.text(`Approval Date: ${approvalDate}`, 20, 95);
+        doc.text(`Expiry Date: ${expiryDate}`, 20, 105);
+        doc.addImage(qrDataUrl, 'PNG', 70, 120, 70, 70);
+        doc.setFontSize(9);
+        doc.text('Scan QR to verify this permit', 105, 200, { align: 'center' });
+        doc.save(`permit-certificate-${application.permitId || application.applicationId || 'approved'}.pdf`);
+    };
+
     const handleDecision = async (status) => {
         if (status === 'Returned' && remarks.trim() === '') {
-            setError('Fadlan qor sababta aad u celineyso codsiga.');
+            setError('Please enter the reason for returning this application.');
             return;
         }
 
@@ -114,14 +184,22 @@ const StaffReview = () => {
             const res = await axios.put(`http://localhost:5000/api/permits/${id}/review`, payload, config);
 
             if (res.data.success) {
-                setSuccessMsg(`Codsiga waala ${status === 'Approved' ? 'Anshaxiyay' : 'Celiyay'} si guul leh!`);
-                setTimeout(() => {
-                    navigate(user?.role === 'superadmin' ? '/admin/all-permits' : '/staff/dashboard');
-                }, 1800);
+                setSuccessMsg(`Application ${status === 'Approved' ? 'approved' : 'returned'} successfully!`);
+                if (status === 'Approved') {
+                    // Stay on page so staff can download QR / PDF certificate
+                    setApplication(res.data.data);
+                    setShowRejectForm(false);
+                    setIsSubmitting(false);
+                    setTimeout(() => setSuccessMsg(''), 4000);
+                } else {
+                    setTimeout(() => {
+                        navigate(user?.role === 'superadmin' ? '/admin/all-permits' : '/staff/applications');
+                    }, 1800);
+                }
             }
         } catch (err) {
             console.error('Failed to submit decision', err);
-            setError('Cillad ayaa dhacday, fadlan dib isku day.');
+            setError('An error occurred. Please try again.');
             setIsSubmitting(false);
         }
     };
@@ -172,7 +250,7 @@ const StaffReview = () => {
     if (loading) return <LoadingScreen />;
 
     if (!application) {
-        return <div className="flex items-center justify-center h-screen bg-bg-soft text-rose-500 font-bold transition-colors">{error || 'Codsi Lama Helin'}</div>;
+        return <div className="flex items-center justify-center h-screen bg-bg-soft text-rose-500 font-bold transition-colors">{error || 'Application Not Found'}</div>;
     }
 
     return (
@@ -194,14 +272,14 @@ const StaffReview = () => {
                                         rel="noopener noreferrer"
                                         className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-md"
                                     >
-                                        <Download size={16} strokeWidth={3} /> Soo Degso (Download)
+                                        <Download size={16} strokeWidth={3} /> Download
                                     </a>
                                 )}
                                 <button
                                     onClick={closePreview}
                                     className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-md"
                                 >
-                                    <XIcon size={16} strokeWidth={3} /> Xir (Close)
+                                    <XIcon size={16} strokeWidth={3} /> Close
                                 </button>
                             </div>
                         </div>
@@ -216,9 +294,9 @@ const StaffReview = () => {
                                     style={{ border: 'none', height: '100%', minHeight: '500px' }}
                                 >
                                     <div className="flex flex-col items-center justify-center h-full text-text-main p-8 transition-colors">
-                                        <p className="mb-4 font-bold text-center">Browser-kaagu ma taageerayo PDF preview.</p>
+                                        <p className="mb-4 font-bold text-center">Your browser does not support PDF preview.</p>
                                         <a href={previewUrl} target="_blank" rel="noreferrer" className="bg-navy hover:brightness-110 text-white px-6 py-2 rounded-lg font-bold transition-all shadow-md">
-                                            Halkan guji si aad u soo degsato
+                                            Click here to download
                                         </a>
                                     </div>
                                 </object>
@@ -253,12 +331,22 @@ const StaffReview = () => {
 
                 <div className="p-6 lg:p-12 max-w-[1200px] mx-auto">
                     <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-                        <div>
-                            <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em] mb-2 block transition-colors">CODSIGA: #{application.applicationId}</span>
-                            <h1 className="text-3xl lg:text-4xl font-black text-navy tracking-tighter transition-colors">Dib-u-eegista Codsiga</h1>
+                        <div className="flex items-start gap-4">
+                            <button
+                                type="button"
+                                onClick={() => navigate(user?.role === 'superadmin' ? '/admin/all-permits' : '/staff/applications')}
+                                className="mt-1 w-10 h-10 rounded-xl bg-card-bg border border-border-color flex items-center justify-center text-text-muted hover:text-navy hover:border-navy/30 transition-all shrink-0"
+                                title="Go back"
+                            >
+                                <ArrowLeft size={20} />
+                            </button>
+                            <div>
+                                <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em] mb-2 block transition-colors">APPLICATION: #{application.applicationId}</span>
+                                <h1 className="text-3xl lg:text-4xl font-black text-navy tracking-tighter transition-colors">Application Review</h1>
+                            </div>
                         </div>
                         <div className="flex flex-col items-end">
-                            <span className="text-[10px] text-text-muted font-black uppercase tracking-wider mb-1 transition-colors">Xaaladda Hadda</span>
+                            <span className="text-[10px] text-text-muted font-black uppercase tracking-wider mb-1 transition-colors">Current Status</span>
                             <span className={`text-[11px] px-4 py-1.5 rounded-full font-black tracking-wide border border-current/10 ${application.status === 'Approved'
                                 ? 'bg-emerald-500/10 text-emerald-500'
                                 : application.status === 'Returned'
@@ -266,10 +354,10 @@ const StaffReview = () => {
                                     : 'bg-amber-500/10 text-amber-500'
                                 }`}>
                                 {application.status === 'Approved'
-                                    ? 'Waa la Anshaxiyay (Approved)'
+                                    ? 'Approved'
                                     : application.status === 'Returned'
-                                        ? 'Waa la Celiyay (Rejected)'
-                                        : 'Sugidda Hubinta'}
+                                        ? 'Returned'
+                                        : 'Pending Review'}
                             </span>
                         </div>
                     </div>
@@ -282,10 +370,10 @@ const StaffReview = () => {
                                 <ClipboardCheck size={24} />
                             </div>
                             <div className="flex-1">
-                                <h4 className="font-black text-amber-500 text-[16px] mb-1">Codsigan waa la saxay & dib ayaa loo soo diray (Resubmitted)</h4>
+                                <h4 className="font-black text-amber-500 text-[16px] mb-1">This application was corrected and resubmitted</h4>
                                 <p className="text-[13px] text-text-muted font-bold leading-relaxed">
-                                    Codsigan waxaa horey u celiyay shaqaalaha oo hadda waxaa soo saxay codsadaha.
-                                    <strong> Lacagta fasaxa (${application.formData.totalFee.toFixed(2)}) horey ayaa loo bixiyay (ALREADY PAID)</strong>, codsadaha looma dallacin lacag labaad.
+                                    This application was previously returned by staff and has now been corrected by the applicant.
+                                    <strong> Permit fee (${application.formData.totalFee.toFixed(2)}) has already been paid (ALREADY PAID)</strong>. The applicant was not charged a second time.
                                 </p>
                             </div>
                         </div>
@@ -298,36 +386,36 @@ const StaffReview = () => {
                             {/* Project Details */}
                             <section className="bg-card-bg rounded-3xl p-8 lg:p-10 shadow-sm border border-border-color transition-colors duration-300">
                                 <h3 className="flex items-center gap-2 font-black text-navy text-[15px] mb-8 transition-colors">
-                                    <FileText size={18} className="text-navy" /> Faahfaahinta Mashruuca
+                                    <FileText size={18} className="text-navy" /> Project Details
                                 </h3>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-10 gap-x-6">
                                     <div>
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Aqoongsiga Booska (Plot ID)</p>
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Plot ID</p>
                                         <p className="font-black text-text-main text-[15px] transition-colors">{application.formData.plotId}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Degmada (District)</p>
-                                        <p className="font-black text-text-main text-[15px] transition-colors">{application.formData.district}, Muqdisho</p>
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">District</p>
+                                        <p className="font-black text-text-main text-[15px] transition-colors">{application.formData.district}, Mogadishu</p>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Weynaanta Booska (Land Size)</p>
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Land Size</p>
                                         <p className="font-black text-text-main text-[15px] transition-colors">{application.formData.landArea} m²</p>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Lacagta Fasaxa (Permit Fee)</p>
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Permit Fee</p>
                                         <div className="flex items-center gap-2">
                                             <p className="font-black text-navy text-[20px] tracking-tight transition-colors">${Number(application.formData.totalFee || 0).toFixed(2)}</p>
                                             {(application.isResubmitted || application.status === 'Approved' || application.paymentStatus === 'Paid') && (
                                                 <span className="bg-emerald-500/10 text-emerald-500 text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-emerald-500/20 transition-colors">
-                                                    Paid (Horey u Bixiyay)
+                                                    Paid
                                                 </span>
                                             )}
                                         </div>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Qaybta Dhismaha</p>
-                                        <p className="font-black text-text-main text-[15px] transition-colors">{application.formData.buildingCategory} <br /><span className="text-[12px] font-bold text-text-muted transition-colors">{application.formData.floors > 1 ? `(${application.formData.floors} Dabaqyo)` : ''}</span></p>
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Building Category</p>
+                                        <p className="font-black text-text-main text-[15px] transition-colors">{application.formData.buildingCategory} <br /><span className="text-[12px] font-bold text-text-muted transition-colors">{application.formData.floors > 1 ? `(${application.formData.floors} floors)` : ''}</span></p>
                                     </div>
                                 </div>
                             </section>
@@ -335,16 +423,16 @@ const StaffReview = () => {
                             {/* Applicant Information */}
                             <section className="bg-card-bg rounded-3xl p-8 lg:p-10 shadow-sm border border-border-color transition-colors duration-300">
                                 <h3 className="flex items-center gap-2 font-black text-navy text-[15px] mb-8 transition-colors">
-                                    <User size={18} className="text-navy" /> Macluumaadka Codsadaha
+                                    <User size={18} className="text-navy" /> Applicant Information
                                 </h3>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-10 gap-x-6">
                                     <div>
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Magaca oo Buuxa</p>
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Full Name</p>
                                         <p className="font-black text-text-main text-[15px] transition-colors">{application.user?.fullName || application.formData.fullName}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Telefoonka</p>
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Phone</p>
                                         <p className="font-black text-text-main text-[15px] transition-colors">{application.user?.phone || application.formData.phone}</p>
                                     </div>
                                 </div>
@@ -354,20 +442,20 @@ const StaffReview = () => {
                             {(user?.role === 'superadmin' || user?.role === 'staff') && application.status === 'Approved' && (
                                 <section className="bg-card-bg rounded-3xl p-8 lg:p-10 shadow-sm border border-border-color transition-colors duration-300">
                                     <h3 className="flex items-center gap-2 font-black text-navy text-[15px] mb-8 transition-colors">
-                                        <UserCheck size={18} className="text-navy" /> Anshaxinta
+                                        <UserCheck size={18} className="text-navy" /> Approval Details
                                     </h3>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-y-10 gap-x-6">
                                         {application.reviewedBy && (
                                             <div>
-                                                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Waxaa Anshaxiyay (Approved By)</p>
+                                                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Approved By</p>
                                                 <p className="font-black text-emerald-500 text-[15px] transition-colors">{application.reviewedBy.fullName}</p>
                                                 {application.approvalDate && <p className="text-[11px] text-text-muted font-bold transition-colors">{new Date(application.approvalDate).toLocaleDateString()}</p>}
                                             </div>
                                         )}
                                         {application.expiryDate && (
                                             <div>
-                                                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Taariikhda Dhicitaanka (Expiry Date)</p>
+                                                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2 transition-colors">Expiry Date</p>
                                                 {isEditingExpiry ? (
                                                     <div className="flex flex-col gap-2 mt-1">
                                                         <input
@@ -408,7 +496,7 @@ const StaffReview = () => {
                                                                 setIsEditingExpiry(true);
                                                             }}
                                                             className="p-1.5 text-blue-500 hover:text-blue-600 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg transition-all focus:outline-none"
-                                                            title="Cusbooneysii Expiry Date"
+                                                            title="Update Expiry Date"
                                                         >
                                                             <Edit3 size={14} />
                                                         </button>
@@ -423,7 +511,7 @@ const StaffReview = () => {
                             {/* Documents */}
                             <section className="bg-white rounded-3xl p-8 lg:p-10 shadow-[0_4px_25px_rgba(0,0,0,0.02)] border border-gray-100">
                                 <h3 className="flex items-center gap-2 font-bold text-[#1E293B] text-[15px] mb-6">
-                                    <FileText size={18} className="text-[#002147]" /> Dukumentiyada La Soo Gudbiyay
+                                    <FileText size={18} className="text-[#002147]" /> Submitted Documents
                                 </h3>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -437,7 +525,7 @@ const StaffReview = () => {
                                                     <FileText size={20} />
                                                 </div>
                                                 <div>
-                                                    <p className="font-black text-[13px] text-text-main mb-0.5 mt-1 transition-colors">Baasaboorka / Aqoonsiga</p>
+                                                    <p className="font-black text-[13px] text-text-main mb-0.5 mt-1 transition-colors">Passport / National ID</p>
                                                     <p className="text-[10px] text-text-muted font-bold transition-colors">{application.documents.nationalId.split('/').pop()}</p>
                                                 </div>
                                             </div>
@@ -449,8 +537,8 @@ const StaffReview = () => {
                                                 <FileText size={20} />
                                             </div>
                                             <div className="ml-4">
-                                                <p className="font-black text-[13px] text-text-muted">Baasaboorka / Aqoonsiga</p>
-                                                <p className="text-[10px] text-text-muted font-bold uppercase">Ma soo gudbin</p>
+                                                <p className="font-black text-[13px] text-text-muted">Passport / National ID</p>
+                                                <p className="text-[10px] text-text-muted font-bold uppercase">Not submitted</p>
                                             </div>
                                         </div>
                                     )}
@@ -465,7 +553,7 @@ const StaffReview = () => {
                                                     <FileText size={20} />
                                                 </div>
                                                 <div>
-                                                    <p className="font-black text-[13px] text-text-main mb-0.5 mt-1 transition-colors">Warqadda Lahaanshaha</p>
+                                                    <p className="font-black text-[13px] text-text-main mb-0.5 mt-1 transition-colors">Ownership Deed</p>
                                                     <p className="text-[10px] text-text-muted font-bold transition-colors">{application.documents.ownershipDocs.split('/').pop()}</p>
                                                 </div>
                                             </div>
@@ -477,8 +565,8 @@ const StaffReview = () => {
                                                 <FileText size={20} />
                                             </div>
                                             <div className="ml-4">
-                                                <p className="font-black text-[13px] text-text-muted">Warqadda Lahaanshaha</p>
-                                                <p className="text-[10px] text-text-muted font-bold uppercase">Ma soo gudbin</p>
+                                                <p className="font-black text-[13px] text-text-muted">Ownership Deed</p>
+                                                <p className="text-[10px] text-text-muted font-bold uppercase">Not submitted</p>
                                             </div>
                                         </div>
                                     )}
@@ -491,42 +579,74 @@ const StaffReview = () => {
                                     <div className="w-4 h-4 bg-white rounded-full"></div>
                                     <div className="absolute bottom-[-10px] w-0 h-0 border-l-[10px] border-r-[10px] border-t-[15px] border-l-transparent border-r-transparent border-t-rose-500"></div>
                                 </div>
-                                <h3 className="font-black text-amber-500 text-[15px] z-10 mb-1">Goobta Booska</h3>
-                                <p className="text-[12px] text-amber-500/70 font-bold z-10 uppercase tracking-wider">Khadka Khariidadda (Khayaali)</p>
+                                <h3 className="font-black text-amber-500 text-[15px] z-10 mb-1">Plot Location</h3>
+                                <p className="text-[12px] text-amber-500/70 font-bold z-10 uppercase tracking-wider">Map Overlay (Preview)</p>
                             </section>
                         </div>
 
                         {/* Right Side: Decision Hub */}
                         <div className="lg:col-span-1 space-y-6">
                             <div className="bg-navy rounded-3xl p-8 shadow-[0_20px_40px_-15px_rgba(0,33,71,0.6)] sticky top-24 transition-colors">
-                                <h3 className="font-black text-white text-[18px] mb-6 tracking-wide uppercase">Xarunta Go'aanka</h3>
+                                <h3 className="font-black text-white text-[18px] mb-6 tracking-wide uppercase">Decision Hub</h3>
 
                                 {application.status === 'Approved' ? (
                                     <div className="text-center py-6">
                                         <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
                                             <CheckCircle2 size={32} />
                                         </div>
-                                        <h4 className="text-white font-bold text-lg mb-2">Codsigan waa la Anshaxiyay</h4>
+                                        <h4 className="text-white font-bold text-lg mb-2">This application has been approved</h4>
                                         <p className="text-gray-400 text-xs leading-relaxed px-4">
-                                            Fasaxan dhismaha waa la dhammaystiray. Wixii isbeddel ah fadlan la xiriir maamulka sare.
+                                            This building permit is finalized. For any changes, please contact senior administration.
                                         </p>
-                                        <div className="mt-8 pt-8 border-t border-white/5">
-                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-4 italic">Shatiga waa mid shaqeynaya</p>
-                                            <div className="p-3 bg-white rounded-xl inline-block shadow-lg">
-                                                {/* Placeholder for QR link or similar if needed */}
-                                                <div className="w-24 h-24 bg-gray-100 flex items-center justify-center">
-                                                    <span className="text-[8px] text-gray-400 font-bold">QR VERIFIED</span>
+                                        {(application.qrData || application.permitId) && (
+                                            <div className="mt-8 pt-8 border-t border-white/5">
+                                                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-2 italic">Permit is active</p>
+                                                {application.permitId && (
+                                                    <p className="text-white font-black text-sm mb-4 tracking-wide">
+                                                        Permit ID: <span className="text-emerald-400">{application.permitId}</span>
+                                                    </p>
+                                                )}
+                                                <div className="p-3 bg-white rounded-xl inline-block shadow-lg mb-4">
+                                                    {qrDataUrl ? (
+                                                        <img
+                                                            src={qrDataUrl}
+                                                            alt="Permit QR Code"
+                                                            className="w-24 h-24 object-contain"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-24 h-24 bg-gray-100 flex items-center justify-center">
+                                                            <span className="text-[8px] text-gray-400 font-bold">LOADING QR…</span>
+                                                        </div>
+                                                    )}
                                                 </div>
+                                                {qrDataUrl && (
+                                                    <div className="space-y-2 px-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleDownloadQrPng}
+                                                            className="w-full bg-white text-navy font-bold text-[12px] py-3 rounded-xl flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-md"
+                                                        >
+                                                            <Download size={14} strokeWidth={3} /> Download PNG
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleDownloadCertificatePdf}
+                                                            className="w-full bg-emerald-500 text-white font-bold text-[12px] py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all shadow-md"
+                                                        >
+                                                            <FileText size={14} strokeWidth={3} /> Download PDF Certificate
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
                                 ) : showRejectForm ? (
                                     <>
                                         <div className="mb-6">
-                                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Sababta Celinta (Rejection Reason)</label>
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Return Reason</label>
                                             <textarea
                                                 rows="6"
-                                                placeholder="Ku qor halkan maxaa khaldan si codsadaha uu u saxo..."
+                                                placeholder="Describe what needs to be corrected so the applicant can fix it..."
                                                 value={remarks}
                                                 onChange={(e) => setRemarks(e.target.value)}
                                                 className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-[13px] text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all resize-none shadow-inner font-bold"
@@ -575,15 +695,14 @@ const StaffReview = () => {
                                         {application.status === 'Returned' && user?.role === 'staff' && (
                                             <div className="text-center py-4 bg-white/5 border border-white/10 rounded-xl mt-4">
                                                 <p className="text-gray-400 text-[11px] font-bold leading-relaxed px-4">
-                                                    Kaliya admin-ka ayaa awood u leh inuu aqbalo codsi la celiyay.
-                                                    (Only an admin can accept a rejected application)
+                                                    Only an admin can accept a returned application.
                                                 </p>
                                             </div>
                                         )}
                                     </div>
                                 )}
 
-                                <p className="text-[9px] text-gray-500 uppercase tracking-widest text-center mt-6">Go'aankaaga waa mid saameyn leh</p>
+                                <p className="text-[9px] text-gray-500 uppercase tracking-widest text-center mt-6">Your decision is final and binding</p>
                             </div>
                         </div>
                     </div>
