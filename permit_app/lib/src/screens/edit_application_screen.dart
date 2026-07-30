@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
+import 'package:permit_app/src/widgets/civic_app_bar.dart';
 import 'package:provider/provider.dart';
 
 class EditApplicationScreen extends StatefulWidget {
@@ -628,12 +629,7 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
 
     return Scaffold(
       backgroundColor: ColorPallete.backgroundColor,
-      appBar: AppBar(
-        title: const Text('Re-edit Application', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: ColorPallete.primaryNavy,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
+      appBar: const CivicAppBar(title: 'Re-edit Application'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(

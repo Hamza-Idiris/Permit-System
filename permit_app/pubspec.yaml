@@ -50,6 +50,8 @@ dependencies:
   intl: ^0.20.2
   shimmer: ^3.0.0
   web_socket_channel: ^3.0.3
+  salomon_bottom_bar: ^3.3.2
+  google_fonts: ^8.2.0
 
 dev_dependencies:
   flutter_test:

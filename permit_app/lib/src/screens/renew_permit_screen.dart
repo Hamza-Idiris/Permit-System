@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:permit_app/src/services/permit_service.dart';
 import 'package:permit_app/src/utils/colors.dart';
+import 'package:permit_app/src/widgets/civic_app_bar.dart';
 import 'package:provider/provider.dart';
 
 class RenewPermitScreen extends StatefulWidget {
@@ -240,12 +241,7 @@ class _RenewPermitScreenState extends State<RenewPermitScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        title: const Text('Renew Permit', style: TextStyle(fontWeight: FontWeight.w900)),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        foregroundColor: isDark ? Colors.white : ColorPallete.primaryNavy,
-        elevation: 0,
-      ),
+      appBar: const CivicAppBar(title: 'Renew Permit'),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: ColorPallete.primaryNavy))
           : _error != null

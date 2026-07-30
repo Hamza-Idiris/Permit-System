@@ -13,191 +13,263 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<Map<String, String>> _onboardingData = [
-    {
-      'title': 'Start Your Building Project',
-      'description': 'Initiate municipal permit applications digitally from your pocket. Track your site surveys and architectural blueprints in one place.',
-      'image': 'onboarding_step1', // Placeholder logic for now, using local generated assets
-    },
-    {
-      'title': 'Smart Compliance Review',
-      'description': 'Our staff checks every requirement. If corrections are needed, re-edit your file instantly without paying extra fees if core parameters stay the same.',
-      'image': 'onboarding_step2',
-    },
-    {
-      'title': 'Instant Digital Issuance',
-      'description': 'Once fully approved by municipal staff, your official building permit and its unique validation QR code are generated instantly for mobile access.',
-      'image': 'onboarding_step3',
-    },
-    {
-      'title': 'Verified Site Inspection',
-      'description': 'Assigned inspectors use mandatory QR scanning on-site to verify physical compliance, ensure structural safety, and finalize project execution.',
-      'image': 'onboarding_step4',
-    },
+  final List<_OnboardSlide> _slides = const [
+    _OnboardSlide(
+      title: 'Apply in minutes',
+      description: 'Submit building permit requests from your phone — plots, plans, and documents in one place.',
+      icon: Icons.architecture_rounded,
+    ),
+    _OnboardSlide(
+      title: 'Track every step',
+      description: 'Follow staff review in real time. Fix returned items quickly without starting over.',
+      icon: Icons.timeline_rounded,
+    ),
+    _OnboardSlide(
+      title: 'Get your QR permit',
+      description: 'Approved permits arrive digitally with a secure QR code ready for field checks.',
+      icon: Icons.qr_code_2_rounded,
+    ),
+    _OnboardSlide(
+      title: 'Inspect with confidence',
+      description: 'Inspectors scan on site to confirm authenticity, expiry, and compliance instantly.',
+      icon: Icons.verified_user_rounded,
+    ),
   ];
 
   @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _goLogin() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+    );
+  }
+
+  void _next() {
+    if (_currentPage == _slides.length - 1) {
+      _goLogin();
+    } else {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 380),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final top = MediaQuery.of(context).padding.top;
+    final bottom = MediaQuery.of(context).padding.bottom;
+    final isLast = _currentPage == _slides.length - 1;
+
     return Scaffold(
-      backgroundColor: ColorPallete.primaryNavy,
       body: Stack(
         children: [
-          // Background Images
-          PageView.builder(
-            controller: _pageController,
-            onPageChanged: (index) => setState(() => _currentPage = index),
-            itemCount: _onboardingData.length,
-            itemBuilder: (context, index) {
-              return Stack(
-                children: [
-                  // Full screen background for the top half (using images would go here)
-                  Container(
-                    width: double.infinity,
-                    height: MediaQuery.of(context).size.height * 0.6,
-                    decoration: BoxDecoration(
-                      color: ColorPallete.primaryNavy,
-                    ),
-                    child: Center(
-                      child: Icon(
-                        index == 0 ? Icons.architecture_rounded : 
-                        index == 1 ? Icons.assignment_turned_in_rounded :
-                        index == 2 ? Icons.qr_code_2_rounded : Icons.verified_user_rounded,
-                        size: 150,
-                        color: Colors.white.withOpacity(0.1),
-                      ),
-                    )
-                  ),
-                  // Content Card
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Container(
-                      height: MediaQuery.of(context).size.height * 0.45,
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(40),
-                          topRight: Radius.circular(40),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          // Indicators
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(
-                              _onboardingData.length,
-                              (i) => AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                margin: const EdgeInsets.only(right: 8),
-                                height: 8,
-                                width: _currentPage == i ? 24 : 8,
-                                decoration: BoxDecoration(
-                                  color: _currentPage == i ? ColorPallete.primaryNavy : Colors.grey.shade300,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 30),
-                          Text(
-                            _onboardingData[index]['title']!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              color: ColorPallete.primaryNavy,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 15),
-                          Text(
-                            _onboardingData[index]['description']!,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey.shade600,
-                              height: 1.6,
-                            ),
-                          ),
-                          const Spacer(),
-                          // Button
-                          SizedBox(
-                            width: double.infinity,
-                            height: 60,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                if (_currentPage == _onboardingData.length - 1) {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const LoginPage()),
-                                  );
-                                } else {
-                                  _pageController.nextPage(
-                                    duration: const Duration(milliseconds: 400),
-                                    curve: Curves.easeInOut,
-                                  );
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: ColorPallete.primaryNavy,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                elevation: 0,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    _currentPage == _onboardingData.length - 1 ? 'Get Started' : 'Continue',
-                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  const Icon(Icons.arrow_forward_rounded),
-                                ],
-                              ),
-                            ),
-                          ),
-                          if (_currentPage != _onboardingData.length - 1)
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                                );
-                              },
-                              child: Text(
-                                'Skip',
-                                style: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  )
-                ],
-              );
-            },
-          ),
-          // System Title Overlay (Small at top)
-          Positioned(
-            top: 60,
-            left: 0,
-            right: 0,
-            child: Text(
-              'SOVEREIGN LEDGER',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.5),
-                letterSpacing: 8,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
+          // Full-bleed gradient canvas
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF0B2C4A), Color(0xFF0D9488)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
-          )
+          ),
+          Positioned(
+            top: -80,
+            right: -60,
+            child: Container(
+              width: 220,
+              height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.06),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: size.height * 0.28,
+            left: -40,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.05),
+              ),
+            ),
+          ),
+
+          SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: EdgeInsets.fromLTRB(20, top > 0 ? 8 : 16, 12, 0),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.account_balance_rounded, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Urban Permits',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (!isLast)
+                        TextButton(
+                          onPressed: _goLogin,
+                          child: Text(
+                            'Skip',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.75),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                Expanded(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: _slides.length,
+                    onPageChanged: (i) => setState(() => _currentPage = i),
+                    itemBuilder: (context, index) {
+                      final slide = _slides[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 28),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(36),
+                                border: Border.all(color: Colors.white.withOpacity(0.22)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.18),
+                                    blurRadius: 28,
+                                    offset: const Offset(0, 14),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(slide.icon, size: 56, color: Colors.white),
+                            ),
+                            const SizedBox(height: 40),
+                            Text(
+                              slide.title,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 30,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.6,
+                                height: 1.15,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              slide.description,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.78),
+                                fontSize: 15,
+                                height: 1.55,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                Padding(
+                  padding: EdgeInsets.fromLTRB(28, 0, 28, bottom + 20),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(_slides.length, (i) {
+                          final active = i == _currentPage;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 280),
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            height: 8,
+                            width: active ? 26 : 8,
+                            decoration: BoxDecoration(
+                              color: active ? Colors.white : Colors.white.withOpacity(0.28),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 22),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed: _next,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: ColorPallete.primaryNavy,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                isLast ? 'Get Started' : 'Continue',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(isLast ? Icons.check_rounded : Icons.arrow_forward_rounded, size: 20),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+class _OnboardSlide {
+  final String title;
+  final String description;
+  final IconData icon;
+
+  const _OnboardSlide({
+    required this.title,
+    required this.description,
+    required this.icon,
+  });
 }

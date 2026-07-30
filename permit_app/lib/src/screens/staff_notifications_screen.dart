@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/services/permit_service.dart';
@@ -18,7 +17,6 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
   final PermitService _permitService = PermitService();
   List<dynamic> _notifications = [];
   bool _isLoading = true;
-  Timer? _refreshTimer;
   bool _isFetching = false;
 
   @override
@@ -48,41 +46,47 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
     }
     try {
       final result = await _permitService.getNotifications();
-      if (mounted) {
-        if (result['success']) {
-          setState(() {
-            _notifications = result['data'];
-            _isLoading = false;
-          });
-        } else if (!silent) {
-          setState(() => _isLoading = false);
-        }
+      if (!mounted) return;
+      if (result['success'] == true) {
+        final raw = result['data'];
+        setState(() {
+          _notifications = raw is List ? List<dynamic>.from(raw) : <dynamic>[];
+          _isLoading = false;
+        });
+      } else if (!silent) {
+        setState(() => _isLoading = false);
       }
     } catch (e) {
       debugPrint('Error fetching notifications: $e');
-    } finally {
-      _isFetching = false;
       if (mounted && !silent) {
         setState(() => _isLoading = false);
       }
+    } finally {
+      _isFetching = false;
     }
   }
 
   Future<void> _deleteNotification(String id) async {
+    if (id.isEmpty) return;
     final result = await _permitService.deleteNotification(id);
-    if (result['success']) {
+    if (result['success'] == true) {
       _fetchNotifications();
     }
   }
 
   Future<void> _markAsRead(String id) async {
+    if (id.isEmpty) return;
     await _permitService.markNotificationAsRead(id);
-    _fetchNotifications();
+    _fetchNotifications(silent: true);
   }
 
   void _showDetailsModal(Map<String, dynamic> notif, bool isDark) {
-    if (!notif['isRead']) _markAsRead(notif['_id']);
-    
+    final id = notif['_id']?.toString() ?? '';
+    final isRead = notif['isRead'] == true;
+    if (!isRead && id.isNotEmpty) {
+      _markAsRead(id);
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -111,19 +115,19 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
             Text(
               'ALERT DETAILS',
               style: TextStyle(
-                fontSize: 10, 
-                fontWeight: FontWeight.w900, 
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
                 letterSpacing: 2,
-                color: isDark ? Colors.white38 : ColorPallete.hintTextColor
+                color: isDark ? Colors.white38 : ColorPallete.hintTextColor,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              notif['type']?.toUpperCase() ?? 'INFORMATION',
+              (notif['type']?.toString() ?? 'INFORMATION').toUpperCase(),
               style: TextStyle(
-                fontSize: 24, 
-                fontWeight: FontWeight.w900, 
-                color: isDark ? Colors.white : ColorPallete.primaryNavy
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : ColorPallete.primaryNavy,
               ),
             ),
             const SizedBox(height: 24),
@@ -132,12 +136,12 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
             Expanded(
               child: SingleChildScrollView(
                 child: Text(
-                  notif['message'] ?? 'No message content.',
+                  notif['message']?.toString() ?? 'No message content.',
                   style: TextStyle(
-                    fontSize: 16, 
-                    height: 1.6, 
+                    fontSize: 16,
+                    height: 1.6,
                     color: isDark ? Colors.white70 : Colors.black87,
-                    fontWeight: FontWeight.w500
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -153,7 +157,7 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
                       foregroundColor: isDark ? Colors.black : Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0
+                      elevation: 0,
                     ),
                     child: const Text('ACKNOWLEDGE', style: TextStyle(fontWeight: FontWeight.w900)),
                   ),
@@ -166,7 +170,7 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
                   ),
                   child: IconButton(
                     onPressed: () {
-                      _deleteNotification(notif['_id']);
+                      _deleteNotification(id);
                       Navigator.pop(context);
                     },
                     icon: const Icon(Icons.delete_outline_rounded, color: ColorPallete.errorRed),
@@ -209,7 +213,9 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
                   padding: const EdgeInsets.all(24),
                   itemCount: _notifications.length,
                   itemBuilder: (context, index) {
-                    return _buildNotificationCard(_notifications[index], isDark);
+                    final raw = _notifications[index];
+                    if (raw is! Map) return const SizedBox.shrink();
+                    return _buildNotificationCard(Map<String, dynamic>.from(raw), isDark);
                   },
                 ),
     );
@@ -225,17 +231,17 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
           Text(
             'System is quiet.',
             style: TextStyle(
-              fontSize: 16, 
-              fontWeight: FontWeight.w900, 
-              color: isDark ? Colors.white38 : ColorPallete.hintTextColor
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white38 : ColorPallete.hintTextColor,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'New alerts will appear here.',
             style: TextStyle(
-              fontSize: 12, 
-              color: isDark ? Colors.white24 : ColorPallete.hintTextColor.withOpacity(0.5)
+              fontSize: 12,
+              color: isDark ? Colors.white24 : ColorPallete.hintTextColor.withOpacity(0.5),
             ),
           ),
         ],
@@ -244,13 +250,17 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
   }
 
   Widget _buildNotificationCard(Map<String, dynamic> notif, bool isDark) {
-    final String id = notif['_id'];
-    final String type = notif['type'] ?? 'INFO';
-    final String message = notif['message'] ?? '';
-    final bool isRead = notif['isRead'] ?? false;
-    final String time = notif['createdAt'] != null 
-        ? DateFormat('HH:mm | MMM d').format(DateTime.parse(notif['createdAt']))
-        : 'Recently';
+    final String id = notif['_id']?.toString() ?? '';
+    final String type = notif['type']?.toString() ?? 'INFO';
+    final String message = notif['message']?.toString() ?? '';
+    final bool isRead = notif['isRead'] == true;
+    String time = 'Recently';
+    try {
+      final createdAt = notif['createdAt']?.toString();
+      if (createdAt != null && createdAt.isNotEmpty) {
+        time = DateFormat('HH:mm | MMM d').format(DateTime.parse(createdAt));
+      }
+    } catch (_) {}
 
     Color typeColor;
     IconData icon;
@@ -259,11 +269,14 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
       case 'URGENT':
       case 'ERROR':
       case 'ALERT':
+      case 'REJECTED':
+      case 'RETURNED':
         typeColor = const Color(0xFFEF4444);
         icon = Icons.warning_amber_rounded;
         break;
       case 'SUCCESS':
       case 'APPROVED':
+      case 'APPLIED':
         typeColor = const Color(0xFF10B981);
         icon = Icons.check_circle_outline_rounded;
         break;
@@ -275,7 +288,7 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       child: Material(
-        color: isDark 
+        color: isDark
             ? (isRead ? const Color(0xFF1E1E1E) : const Color(0xFF2D2D2D))
             : (isRead ? Colors.white : const Color(0xFFF8FAFC)),
         borderRadius: BorderRadius.circular(20),
@@ -301,19 +314,19 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
                     Text(
                       type.toUpperCase(),
                       style: TextStyle(
-                        fontSize: 10, 
-                        fontWeight: FontWeight.w900, 
-                        color: typeColor, 
-                        letterSpacing: 1
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: typeColor,
+                        letterSpacing: 1,
                       ),
                     ),
                     const Spacer(),
                     Text(
                       time,
                       style: TextStyle(
-                        fontSize: 10, 
+                        fontSize: 10,
                         color: isDark ? Colors.white24 : ColorPallete.hintTextColor,
-                        fontWeight: FontWeight.bold
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -322,10 +335,10 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
                 Text(
                   message,
                   style: TextStyle(
-                    fontSize: 14, 
+                    fontSize: 14,
                     fontWeight: isRead ? FontWeight.w500 : FontWeight.w800,
                     color: isDark ? Colors.white : ColorPallete.primaryNavy,
-                    height: 1.5
+                    height: 1.5,
                   ),
                 ),
                 const SizedBox(height: 20),

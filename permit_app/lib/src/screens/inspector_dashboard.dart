@@ -37,21 +37,21 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
         onScanTap: _openScanner,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: Container(
+        floatingActionButton: Container(
         margin: const EdgeInsets.only(bottom: 20),
-        height: 70,
-        width: 70,
+        height: 68,
+        width: 68,
         child: FloatingActionButton(
           onPressed: _openScanner,
-          backgroundColor: ColorPallete.primaryNavy,
-          elevation: 8,
+          backgroundColor: ColorPallete.accentTeal,
+          elevation: 6,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           child: const Icon(
-            Icons.camera_alt_rounded,
+            Icons.qr_code_scanner_rounded,
             color: Colors.white,
-            size: 32,
+            size: 30,
           ),
         ),
       ),

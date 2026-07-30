@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/screens/apply_permit_screen.dart';
 import 'package:permit_app/src/screens/track_applications_screen.dart';
@@ -17,6 +17,7 @@ import 'package:permit_app/src/screens/renew_permit_screen.dart';
 import 'package:permit_app/src/services/permit_service.dart';
 import 'package:permit_app/src/services/websocket_service.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
+import 'package:permit_app/src/widgets/civic_app_bar.dart';
 
 class ApplicantDashboard extends StatefulWidget {
   const ApplicantDashboard({super.key});
@@ -75,10 +76,11 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
       final result = await _permitService.getNotifications();
       if (!mounted) return;
       
-      if (result['success']) {
+      if (result['success'] == true) {
         setState(() {
-          _notifications = result['data'];
-          _unreadNotificationsCount = result['unreadCount'] ?? 0;
+          final raw = result['data'];
+          _notifications = raw is List ? List<dynamic>.from(raw) : <dynamic>[];
+          _unreadNotificationsCount = (result['unreadCount'] as num?)?.toInt() ?? 0;
         });
       }
     } catch (e) {
@@ -102,9 +104,10 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
       final result = await _permitService.getMyApplications();
       if (!mounted) return;
       
-      if (result['success']) {
+      if (result['success'] == true) {
         setState(() {
-          _permits = result['data'];
+          final raw = result['data'];
+          _permits = raw is List ? List<dynamic>.from(raw) : <dynamic>[];
         });
       } else if (!silent) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -158,80 +161,67 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
     ];
 
     return Scaffold(
-      backgroundColor: isDark ? ColorPallete.darkBackgroundColor : ColorPallete.backgroundColor,
+      backgroundColor: ColorPallete.scaffold(isDark),
       body: IndexedStack(
         index: _selectedIndex,
         children: pages,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: isDark ? ColorPallete.darkBackgroundColor : ColorPallete.backgroundColor,
+          color: ColorPallete.surface(isDark),
+          border: Border(
+            top: BorderSide(color: isDark ? Colors.white10 : ColorPallete.borderColor),
+          ),
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 20,
+              color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
+              offset: const Offset(0, -4),
+            ),
+          ],
         ),
         child: SafeArea(
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  blurRadius: 30,
-                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
-                  offset: const Offset(0, 10),
-                )
-              ],
-            ),
-            child: GNav(
-              rippleColor: ColorPallete.primaryNavy.withOpacity(0.1),
-              hoverColor: ColorPallete.primaryNavy.withOpacity(0.05),
-              gap: 8,
-              activeColor: isDark ? Colors.white : ColorPallete.primaryNavy,
-              iconSize: 24,
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-              duration: const Duration(milliseconds: 400),
-              tabBackgroundColor: isDark ? Colors.white.withOpacity(0.1) : ColorPallete.primaryNavy.withOpacity(0.08),
-              color: isDark ? Colors.white38 : ColorPallete.hintTextColor,
-              tabs: [
-                const GButton(
-                  icon: Icons.home_rounded,
-                  text: 'Home',
-                ),
-                const GButton(
-                  icon: Icons.assignment_rounded,
-                  text: 'Permits',
-                ),
-                GButton(
-                  icon: Icons.notifications_rounded,
-                  text: 'Alerts',
-                  leading: Badge(
-                    label: Text('$_unreadNotificationsCount'),
-                    isLabelVisible: _unreadNotificationsCount > 0,
-                    child: Icon(
-                      Icons.notifications_rounded,
-                      color: _selectedIndex == 2 
-                          ? (isDark ? Colors.white : ColorPallete.primaryNavy) 
-                          : (isDark ? Colors.white38 : ColorPallete.hintTextColor),
-                      size: 24,
-                    ),
-                  ),
-                ),
-                const GButton(
-                  icon: Icons.person_rounded,
-                  text: 'Profile',
-                ),
-              ],
-              selectedIndex: _selectedIndex,
-              onTabChange: (index) {
-                setState(() {
-                  _selectedIndex = index;
-                });
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: SalomonBottomBar(
+              currentIndex: _selectedIndex,
+              onTap: (index) {
+                setState(() => _selectedIndex = index);
                 if (index == 2) {
                   _fetchNotifications();
                 } else if (index == 1) {
                   _fetchPermits();
                 }
               },
+              selectedItemColor: ColorPallete.accentTeal,
+              unselectedItemColor: isDark ? Colors.white38 : ColorPallete.hintTextColor,
+              items: [
+                SalomonBottomBarItem(
+                  icon: const Icon(Icons.home_rounded),
+                  title: const Text('Home'),
+                ),
+                SalomonBottomBarItem(
+                  icon: const Icon(Icons.assignment_rounded),
+                  title: const Text('Permits'),
+                ),
+                SalomonBottomBarItem(
+                  icon: Badge(
+                    isLabelVisible: _unreadNotificationsCount > 0,
+                    label: Text(
+                      _unreadNotificationsCount > 99
+                          ? '99+'
+                          : '$_unreadNotificationsCount',
+                      style: const TextStyle(fontSize: 10),
+                    ),
+                    child: const Icon(Icons.notifications_rounded),
+                  ),
+                  title: const Text('Alerts'),
+                ),
+                SalomonBottomBarItem(
+                  icon: const Icon(Icons.person_rounded),
+                  title: const Text('Profile'),
+                ),
+              ],
             ),
           ),
         ),
@@ -258,12 +248,12 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Marhaba, Welcome back',
+                      'Welcome back',
                       style: TextStyle(
                         fontSize: 14, 
                         fontWeight: FontWeight.w600,
                         color: isDark ? Colors.white54 : ColorPallete.hintTextColor,
-                        letterSpacing: 0.5
+                        letterSpacing: 0.2
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -315,20 +305,14 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
               width: double.infinity,
               padding: const EdgeInsets.all(30),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isDark 
-                    ? [const Color(0xFF1E3A8A), const Color(0xFF001F3F)]
-                    : [ColorPallete.primaryNavy, const Color(0xFF1E3A8A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(32),
+                gradient: ColorPallete.accentGradient,
+                borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: ColorPallete.primaryNavy.withOpacity(isDark ? 0.5 : 0.3),
-                    blurRadius: 25,
-                    offset: const Offset(0, 15),
-                    spreadRadius: -5,
+                    color: ColorPallete.primaryNavy.withOpacity(isDark ? 0.45 : 0.22),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                    spreadRadius: -4,
                   ),
                 ],
               ),
@@ -345,31 +329,31 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(10),
+                          color: Colors.white.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(99),
                         ),
                         child: const Text(
-                          'GOVERNMENT PORTAL',
-                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1),
+                          'Mogadishu Permits',
+                          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
                       const Text(
-                        'Start Your Building\nPermit Application',
+                        'Apply for a building\npermit',
                         style: TextStyle(
                           color: Colors.white, 
                           fontSize: 24, 
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w800,
                           height: 1.2,
-                          letterSpacing: -0.5
+                          letterSpacing: -0.4
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Text(
-                        'Fast-track your construction legacy with our secure digital sovereignty engine.',
-                        style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13, fontWeight: FontWeight.w500),
+                        'Submit your application and track progress in one place.',
+                        style: TextStyle(color: Colors.white.withOpacity(0.78), fontSize: 13, fontWeight: FontWeight.w500),
                       ),
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 22),
                       ElevatedButton(
                         onPressed: () {
                           Navigator.push(
@@ -381,13 +365,13 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                           backgroundColor: Colors.white,
                           foregroundColor: ColorPallete.primaryNavy,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: const [
-                            Text('Apply Now', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                            Text('Apply Now', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                             SizedBox(width: 8),
                             Icon(Icons.arrow_forward_rounded, size: 18),
                           ],
@@ -399,30 +383,30 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
               ),
             ),
             
-            const SizedBox(height: 45),
+            const SizedBox(height: 36),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Institutional Services',
+                  'Services',
                   style: TextStyle(
                     fontSize: 20, 
-                    fontWeight: FontWeight.w900, 
+                    fontWeight: FontWeight.w800, 
                     color: primaryColor,
-                    letterSpacing: -0.5
+                    letterSpacing: -0.3
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.05),
+                    color: primaryColor.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(Icons.grid_view_rounded, size: 18, color: primaryColor),
                 )
               ],
             ),
-            const SizedBox(height: 25),
+            const SizedBox(height: 18),
             
             GridView.count(
               shrinkWrap: true,
@@ -560,15 +544,12 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
 
     return Scaffold(
       backgroundColor: isDark ? ColorPallete.darkBackgroundColor : ColorPallete.backgroundColor,
-      appBar: AppBar(
+      appBar: CivicAppBar(
+        title: 'Notifications',
         automaticallyImplyLeading: false,
-        title: Text('Notifications', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : ColorPallete.primaryNavy)),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        foregroundColor: isDark ? Colors.white : ColorPallete.primaryNavy,
-        elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh_rounded, color: isDark ? Colors.white70 : ColorPallete.primaryNavy),
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: () {
               _fetchPermits();
               _fetchNotifications();
@@ -602,11 +583,15 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                     padding: const EdgeInsets.all(15),
                     itemCount: _notifications.length,
                     itemBuilder: (context, index) {
-                      final notif = _notifications[index];
-                      final String message = notif['message'] ?? '';
-                      final String type = notif['type'] ?? 'Info';
-                      final bool isRead = notif['isRead'] ?? false;
-                      final String createdAt = notif['createdAt'] ?? '';
+                      final rawNotif = _notifications[index];
+                      final notif = rawNotif is Map
+                          ? Map<String, dynamic>.from(rawNotif)
+                          : <String, dynamic>{};
+                      final String message = notif['message']?.toString() ?? '';
+                      final String type = notif['type']?.toString() ?? 'Info';
+                      final bool isRead = notif['isRead'] == true;
+                      final String createdAt = notif['createdAt']?.toString() ?? '';
+                      final String notifId = notif['_id']?.toString() ?? '';
 
                       IconData icon = Icons.info_rounded;
                       Color color = isDark ? Colors.white : ColorPallete.primaryNavy;
@@ -701,9 +686,9 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                           ),
                           trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: isDark ? Colors.white24 : Colors.grey),
                           onTap: () async {
-                            if (!isRead) {
-                              await _permitService.markNotificationAsRead(notif['_id']);
-                              _fetchNotifications();
+                            if (!isRead && notifId.isNotEmpty) {
+                              await _permitService.markNotificationAsRead(notifId);
+                              if (mounted) await _fetchNotifications();
                             }
 
                             final matchApp = RegExp(r'MOG-\d{4}-\d{4}').firstMatch(message);
@@ -713,39 +698,39 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
 
                             dynamic matchingPermit;
                             if (appId != null || permitId != null) {
-                              try {
-                                matchingPermit = _permits.firstWhere(
-                                  (p) => p['applicationId'] == appId || p['permitId'] == permitId,
-                                  orElse: () => null,
-                                );
-                              } catch (_) {}
-                            }
-
-                            if (matchingPermit != null) {
-                              if (mounted) {
-                                final result = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => PermitDetailScreen(permit: matchingPermit),
-                                  ),
-                                );
-                                if (result == true) {
-                                  _fetchPermits();
-                                  _fetchNotifications();
+                              for (final p in _permits) {
+                                if (p is! Map) continue;
+                                if ((appId != null && p['applicationId']?.toString() == appId) ||
+                                    (permitId != null && p['permitId']?.toString() == permitId)) {
+                                  matchingPermit = p;
+                                  break;
                                 }
                               }
-                            } else {
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Opening applications list...'),
-                                    duration: Duration(seconds: 1),
-                                  ),
-                                );
-                                setState(() {
-                                  _selectedIndex = 1;
-                                });
+                            }
+
+                            if (!mounted) return;
+
+                            if (matchingPermit != null) {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => PermitDetailScreen(permit: Map<String, dynamic>.from(matchingPermit as Map)),
+                                ),
+                              );
+                              if (result == true && mounted) {
+                                _fetchPermits();
+                                _fetchNotifications();
                               }
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Opening applications list...'),
+                                  duration: Duration(seconds: 1),
+                                ),
+                              );
+                              setState(() {
+                                _selectedIndex = 1;
+                              });
                             }
                           },
                         ),
