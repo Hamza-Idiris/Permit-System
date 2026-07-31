@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/services/permit_service.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
+import 'package:permit_app/src/widgets/civic_app_bar.dart';
 import 'package:provider/provider.dart';
 
 class ApplyPermitScreen extends StatefulWidget {
@@ -544,13 +545,7 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? ColorPallete.darkBackgroundColor : ColorPallete.backgroundColor,
-      appBar: AppBar(
-        title: const Text('New Application', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-        backgroundColor: isDark ? Colors.black : ColorPallete.primaryNavy,
-        foregroundColor: ColorPallete.whiteColor,
-        elevation: 0,
-        centerTitle: true,
-      ),
+      appBar: const CivicAppBar(title: 'New Application'),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24.0),

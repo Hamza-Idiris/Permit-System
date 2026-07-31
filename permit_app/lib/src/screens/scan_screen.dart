@@ -80,18 +80,27 @@ class _ScanScreenState extends State<ScanScreen> {
         setState(() {
           _isProcessing = false;
         });
-        
-        // Save scan history
+
+        bool offlineExpired = false;
+        if (offlinePayload['expiryDate'] != null) {
+          try {
+            offlineExpired = DateTime.parse(offlinePayload['expiryDate'].toString()).isBefore(DateTime.now());
+          } catch (_) {}
+        }
+        final offlineData = Map<String, dynamic>.from(offlinePayload);
+        offlineData['isExpired'] = offlineExpired;
+
         await _scanHistoryService.saveScan(
           permitId: offlinePayload['permitId'] ?? offlinePayload['plotId'],
-          isSuccess: true,
-          permitData: offlinePayload,
+          isSuccess: !offlineExpired,
+          permitData: offlineData,
         );
-        
+
+        if (!mounted) return;
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => VerifiedPermitPage(permitData: offlinePayload),
+            builder: (_) => VerifiedPermitPage(permitData: offlineData),
           ),
         );
         return;
@@ -141,53 +150,56 @@ class _ScanScreenState extends State<ScanScreen> {
               } catch (_) {}
             }
 
-            if (isExpired) {
-              await _scanHistoryService.saveScan(
-                permitId: permitIdToSave,
-                isSuccess: false,
-                permitData: permit,
-              );
-              _showFailedPanel('Permit has Expired');
-            } else {
-              final Map<String, dynamic> normalizedData = {
-                'permitId': permitIdToSave,
-                'applicantName': (() {
-                  // Priority 1: populated user object (real User record)
-                final userObj = permit['user'];
-                if (userObj is Map) {
-                  final n = userObj['fullName']?.toString() ?? '';
-                  if (n.isNotEmpty && n != 'Official Member') return n;
-                }
-                // Priority 2: formData fullName (applicant-entered, may be stale)
-                final fd = permit['formData'];
-                if (fd is Map) {
-                  final n = fd['fullName']?.toString() ?? '';
-                  if (n.isNotEmpty && n != 'Official Member') return n;
-                }
-                return 'N/A';
-              })(),
-              'approvedBy': permit['reviewedBy']?['fullName'] ?? 'System',
-              'district': permit['district'] ?? 'N/A',
-              'plotId': permit['formData']?['plotId'] ?? 'N/A',
-              'buildingType': permit['formData']?['buildingCategory'] ?? 'N/A',
-              'landArea': '${permit['formData']?['landArea'] ?? 0} m²',
-              'floors': permit['formData']?['floors'],
-              'approvedTime': permit['approvalDate'] ?? permit['updatedAt'] ?? permit['createdAt'],
-              'expiryDate': permit['expiryDate'],
-            };
-            
-              await _scanHistoryService.saveScan(
-                permitId: permitIdToSave,
-                isSuccess: true,
-                permitData: normalizedData,
-              );
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => VerifiedPermitPage(permitData: normalizedData),
-                ),
-              );
+            String applicantName = 'N/A';
+            final userObj = permit['user'];
+            if (userObj is Map) {
+              final n = userObj['fullName']?.toString() ?? '';
+              if (n.isNotEmpty && n != 'Official Member') applicantName = n;
             }
+            if (applicantName == 'N/A') {
+              final fd = permit['formData'];
+              if (fd is Map) {
+                final n = fd['fullName']?.toString() ?? '';
+                if (n.isNotEmpty && n != 'Official Member') applicantName = n;
+              }
+            }
+
+            final fd = permit['formData'] is Map ? Map<String, dynamic>.from(permit['formData'] as Map) : <String, dynamic>{};
+            final reviewedBy = permit['reviewedBy'];
+            final approvedByName = reviewedBy is Map
+                ? (reviewedBy['fullName']?.toString() ?? 'System')
+                : 'System';
+
+            final Map<String, dynamic> normalizedData = {
+              'permitId': permitIdToSave,
+              'applicationId': permit['applicationId']?.toString() ?? '',
+              'applicantName': applicantName,
+              'approvedBy': approvedByName,
+              'district': permit['district']?.toString() ?? 'N/A',
+              'plotId': fd['plotId']?.toString() ?? 'N/A',
+              'buildingType': fd['buildingCategory']?.toString() ?? 'N/A',
+              'landArea': '${fd['landArea'] ?? 0} m²',
+              'floors': fd['floors'],
+              'fee': fd['totalFee'],
+              'totalFee': fd['totalFee'],
+              'approvedTime': permit['approvalDate'] ?? permit['updatedAt'] ?? permit['createdAt'],
+              'approvalDate': permit['approvalDate'],
+              'expiryDate': permit['expiryDate'],
+              'isExpired': isExpired,
+            };
+
+            await _scanHistoryService.saveScan(
+              permitId: permitIdToSave,
+              isSuccess: !isExpired,
+              permitData: normalizedData,
+            );
+            if (!mounted) return;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => VerifiedPermitPage(permitData: normalizedData),
+              ),
+            );
           } else {
             await _scanHistoryService.saveScan(
               permitId: permitIdToSave,

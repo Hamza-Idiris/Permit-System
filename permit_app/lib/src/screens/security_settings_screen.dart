@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/providers/auth_provider.dart';
+import 'package:permit_app/src/widgets/civic_app_bar.dart';
 import 'package:provider/provider.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
@@ -141,19 +142,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
 
     return Scaffold(
       backgroundColor: scaffoldBg,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: primaryColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Security Settings',
-          style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        centerTitle: true,
-      ),
+      appBar: const CivicAppBar(title: 'Security Settings'),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),

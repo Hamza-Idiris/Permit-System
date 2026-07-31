@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permit_app/src/utils/colors.dart';
+import 'package:permit_app/src/widgets/civic_app_bar.dart';
 
 class AboutUsScreen extends StatelessWidget {
   const AboutUsScreen({super.key});
@@ -11,11 +12,8 @@ class AboutUsScreen extends StatelessWidget {
     
     return Scaffold(
       backgroundColor: isDark ? ColorPallete.darkBackgroundColor : const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text('Sovereign Ledger', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: isDark ? Colors.white : primaryNavy,
+      appBar: CivicAppBar(
+        title: 'Urban Permits',
         actions: [
           IconButton(
             onPressed: () {},

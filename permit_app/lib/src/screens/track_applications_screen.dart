@@ -5,6 +5,7 @@ import 'package:permit_app/src/services/permit_service.dart';
 import 'package:permit_app/src/screens/permit_detail_screen.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:permit_app/src/services/websocket_service.dart';
+import 'package:permit_app/src/widgets/civic_app_bar.dart';
 import 'package:provider/provider.dart';
 
 class TrackApplicationsScreen extends StatefulWidget {
@@ -87,12 +88,8 @@ class _TrackApplicationsScreenState extends State<TrackApplicationsScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? ColorPallete.darkBackgroundColor : ColorPallete.backgroundColor,
-      appBar: AppBar(
-        title: const Text('My Applications', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-        backgroundColor: isDark ? Colors.black : ColorPallete.primaryNavy,
-        foregroundColor: ColorPallete.whiteColor,
-        elevation: 0,
-        centerTitle: true,
+      appBar: CivicAppBar(
+        title: 'My Applications',
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list_rounded),

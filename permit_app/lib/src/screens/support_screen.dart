@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permit_app/src/utils/colors.dart';
+import 'package:permit_app/src/widgets/civic_app_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SupportScreen extends StatelessWidget {
@@ -17,13 +18,7 @@ class SupportScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: ColorPallete.backgroundColor,
-      appBar: AppBar(
-        title: const Text('Help & Support', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: ColorPallete.primaryNavy,
-        elevation: 0,
-        centerTitle: true,
-      ),
+      appBar: const CivicAppBar(title: 'Help & Support'),
       body: SingleChildScrollView(
         child: Column(
           children: [

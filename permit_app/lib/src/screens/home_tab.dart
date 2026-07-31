@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -37,7 +35,6 @@ class HomeTabState extends State<HomeTab> {
   int _successScans = 0;
   int _failedScans = 0;
   int _unreadNotificationsCount = 0;
-  Timer? _refreshTimer;
   bool _isFetchingNotifications = false;
 
   @override
@@ -65,9 +62,10 @@ class HomeTabState extends State<HomeTab> {
     _isFetchingNotifications = true;
     try {
       final result = await _permitService.getNotifications();
-      if (mounted && result['success']) {
+      if (mounted && result['success'] == true) {
         setState(() {
-          _unreadNotificationsCount = result['unreadCount'] ?? 0;
+          final unread = result['unreadCount'];
+          _unreadNotificationsCount = unread is num ? unread.toInt() : 0;
         });
       }
     } catch (e) {
@@ -180,8 +178,8 @@ class HomeTabState extends State<HomeTab> {
                 _buildQuickActionCard(isDark),
                 const SizedBox(height: 32),
                 Text(
-                  'CURRENT MONTH SCANS',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : ColorPallete.hintTextColor, letterSpacing: 1)
+                  'This month',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: isDark ? Colors.white38 : ColorPallete.hintTextColor)
                 ),
                 const SizedBox(height: 16),
                 _buildSummaryCards(isDark),
@@ -208,18 +206,18 @@ class HomeTabState extends State<HomeTab> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Sovereign Ledger'.toUpperCase(), 
+            Text('Urban Permits', 
               style: TextStyle(
-                fontSize: 10, 
-                fontWeight: FontWeight.w900, 
-                letterSpacing: 2, 
+                fontSize: 11, 
+                fontWeight: FontWeight.w700, 
+                letterSpacing: 0.6, 
                 color: isDark ? Colors.white38 : ColorPallete.hintTextColor
               )
             ),
-            Text('Inspectorate Portal', 
+            Text('Inspector Portal', 
               style: TextStyle(
-                fontSize: 16, 
-                fontWeight: FontWeight.w900, 
+                fontSize: 17, 
+                fontWeight: FontWeight.w800, 
                 color: isDark ? Colors.white : ColorPallete.primaryNavy
               )
             ),
@@ -271,17 +269,17 @@ class HomeTabState extends State<HomeTab> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Maalin Wacan, $_fullName',
+          'Hello, $_fullName',
           style: TextStyle(
             fontSize: 28, 
-            fontWeight: FontWeight.w900, 
+            fontWeight: FontWeight.w800, 
             color: isDark ? Colors.white : ColorPallete.primaryNavy,
-            letterSpacing: -1
+            letterSpacing: -0.6
           ),
         ),
         const SizedBox(height: 4),
         Text(
-          'Mogadishu Urban Planning & Permit Control',
+          'Scan and verify building permits in the field',
           style: TextStyle(
             fontSize: 14, 
             color: isDark ? Colors.white38 : ColorPallete.hintTextColor,
@@ -296,17 +294,11 @@ class HomeTabState extends State<HomeTab> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark 
-            ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-            : [ColorPallete.primaryNavy, ColorPallete.secondaryNavy],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: ColorPallete.accentGradient,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: (isDark ? Colors.black : ColorPallete.primaryNavy).withOpacity(0.3),
+            color: (isDark ? Colors.black : ColorPallete.primaryNavy).withOpacity(0.28),
             blurRadius: 20,
             offset: const Offset(0, 10),
           )
@@ -324,16 +316,23 @@ class HomeTabState extends State<HomeTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('FIELD VERIFICATION', style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-                const SizedBox(height: 12),
-                const Text('Instant Permit Validation', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.16),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: const Text('Field verification', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(height: 14),
+                const Text('Scan permit QR code', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 8),
-                const Text('Scan official municipality QR codes to verify construction legitimacy in real-time.', style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4)),
-                const SizedBox(height: 24),
+                const Text('Verify construction legitimacy instantly with the official municipality QR.', style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4)),
+                const SizedBox(height: 22),
                 ElevatedButton.icon(
                   onPressed: widget.onScanTap,
                   icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
-                  label: const Text('LAUNCH SCANNER', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                  label: const Text('Open Scanner', style: TextStyle(fontWeight: FontWeight.w800)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: ColorPallete.primaryNavy,

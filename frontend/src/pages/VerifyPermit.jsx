@@ -44,12 +44,16 @@ const VerifyPermit = () => {
     const fd = app?.formData || {};
     const valid = !!payload?.valid;
     const reason = payload?.reason || '';
-    const expired = /expired/i.test(reason);
+    const expiredByReason = /expired/i.test(reason);
+    const expiredByDate = app?.expiryDate
+      ? new Date(app.expiryDate) < new Date()
+      : false;
+    const expired = expiredByReason || expiredByDate;
 
     return {
-      valid,
+      valid: valid && !expired,
       expired,
-      status: app?.status || (valid ? 'Approved' : 'Invalid'),
+      status: expired ? 'Expired' : (app?.status || (valid ? 'Approved' : 'Invalid')),
       permitId: app?.permitId || payload?.log?.permitId || '',
       applicationId: app?.applicationId || payload?.log?.applicationId || '',
       applicant: app?.user?.fullName || fd.fullName || payload?.log?.applicantName || '—',
@@ -62,7 +66,7 @@ const VerifyPermit = () => {
       expiryDate: app?.expiryDate,
       qrPayload: app?.qrPayload,
       application: app,
-      reason,
+      reason: expired && !reason ? 'Permit expired' : reason,
     };
   };
 
@@ -295,17 +299,17 @@ const VerifyPermit = () => {
             {result && (
               <div className={`rounded-2xl border shadow-sm overflow-hidden ${
                 verdict === 'valid'
-                  ? 'bg-emerald-500/5 border-emerald-500/30'
+                  ? 'border-emerald-500/30'
                   : verdict === 'expired'
-                    ? 'bg-amber-500/5 border-amber-500/30'
-                    : 'bg-rose-500/5 border-rose-500/30'
+                    ? 'border-amber-500/30'
+                    : 'border-rose-500/30'
               }`}>
                 <div className={`px-6 py-6 flex flex-wrap items-center justify-between gap-3 ${
                   verdict === 'valid'
-                    ? 'bg-emerald-500/15'
+                    ? 'bg-emerald-50'
                     : verdict === 'expired'
-                      ? 'bg-amber-500/15'
-                      : 'bg-rose-500/15'
+                      ? 'bg-[#FFF8EB]'
+                      : 'bg-rose-50'
                 }`}>
                   <div className="flex items-center gap-4">
                     {verdict === 'valid' && <CheckCircle2 className="text-emerald-500" size={40} />}
@@ -324,12 +328,12 @@ const VerifyPermit = () => {
                       )}
                     </div>
                   </div>
-                  <span className="text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-card-bg border border-border-color text-navy">
+                  <span className="text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-white border border-border-color text-navy">
                     Status: {result.status || '—'}
                   </span>
                 </div>
 
-                <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5 bg-card-bg">
+                <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5 bg-white">
                   {[
                     { label: 'Permit ID', value: result.permitId || '—' },
                     { label: 'Application ID', value: result.applicationId || '—' },
@@ -359,7 +363,7 @@ const VerifyPermit = () => {
                 )}
 
                 {applicationId && (
-                  <div className="px-6 pb-6 flex flex-wrap gap-3 bg-card-bg">
+                  <div className="px-6 pb-6 flex flex-wrap gap-3 bg-white">
                     <Link
                       to={`/staff/review/${applicationId}`}
                       className="inline-flex items-center gap-2 bg-navy text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:brightness-110 transition-all"

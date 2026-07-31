@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/screens/edit_application_screen.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
+import 'package:permit_app/src/widgets/civic_app_bar.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:file_picker/file_picker.dart';
@@ -191,13 +192,7 @@ class _PermitDetailScreenState extends State<PermitDetailScreen> {
     
     return Scaffold(
       backgroundColor: ColorPallete.backgroundColor,
-      appBar: AppBar(
-        title: const Text('Permit Details', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: ColorPallete.primaryNavy,
-        elevation: 0,
-        centerTitle: true,
-      ),
+      appBar: const CivicAppBar(title: 'Permit Details'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(12),
         child: Column(

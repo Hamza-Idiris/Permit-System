@@ -182,7 +182,7 @@ class PermitService {
       if (token == null) return {'success': false, 'message': 'No authentication token found'};
 
       final response = await http.get(
-        Uri.parse('${Constants.apiBaseUrl}/notifications'),
+        Uri.parse('${Constants.apiBaseUrl}/notifications?limit=100'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -191,10 +191,12 @@ class PermitService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
+        final raw = data is Map ? data['data'] : null;
+        final unread = data is Map ? data['unreadCount'] : null;
         return {
           'success': true,
-          'data': data['data'],
-          'unreadCount': data['unreadCount']
+          'data': raw is List ? List<dynamic>.from(raw) : <dynamic>[],
+          'unreadCount': unread is num ? unread.toInt() : 0,
         };
       } else {
         return {'success': false, 'message': data['message'] ?? 'Failed to fetch notifications'};

@@ -26,8 +26,8 @@ class GuidelinesScreen extends StatelessWidget {
                 ),
               ),
               background: Container(
-                decoration: BoxDecoration(
-                  gradient: ColorPallete.primaryGradient,
+                decoration: const BoxDecoration(
+                  gradient: ColorPallete.accentGradient,
                 ),
                 child: Stack(
                   children: [
