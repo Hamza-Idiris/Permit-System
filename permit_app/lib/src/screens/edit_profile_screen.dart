@@ -23,6 +23,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _passwordController;
   
   bool _isPasswordVisible = false;
+  String _memberSinceYear = '';
 
   @override
   void initState() {
@@ -44,10 +45,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final name = await _storage.read(key: 'fullName');
     final email = await _storage.read(key: 'email');
     final phone = await _storage.read(key: 'phone');
+    final createdAt = await _storage.read(key: 'createdAt');
     
     setState(() {
       _nameController.text = name ?? "";
       _emailController.text = email ?? "";
+      _memberSinceYear = _yearFromIso(createdAt);
       if (phone != null) {
         if (phone.startsWith('+252')) {
           _countryCodeController.text = '+252';
@@ -57,6 +60,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
       }
     });
+  }
+
+  String _yearFromIso(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    try {
+      return DateTime.parse(iso).year.toString();
+    } catch (_) {
+      return '';
+    }
   }
 
   @override
@@ -167,9 +179,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     color: primaryColor,
                   ),
                 ),
-                const Text(
-                  'Profile Member since 2023',
-                  style: TextStyle(color: ColorPallete.hintTextColor, fontSize: 13),
+                Text(
+                  _memberSinceYear.isEmpty
+                      ? 'Profile Member'
+                      : 'Profile Member since $_memberSinceYear',
+                  style: const TextStyle(color: ColorPallete.hintTextColor, fontSize: 13),
                 ),
                 
                 const SizedBox(height: 30),
