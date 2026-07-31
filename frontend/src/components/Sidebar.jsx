@@ -116,10 +116,10 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
             </div>
             <div>
               <p className={`font-black text-[14px] leading-tight ${darkMode ? 'text-white' : 'text-navy'}`}>
-                Sovereign Ledger
+                M-DBPS
               </p>
-              <p className={`text-[9px] font-black uppercase tracking-[0.2em] mt-0.5 ${darkMode ? 'text-white/35' : 'text-gray-400'}`}>
-                Urban Permit Authority
+              <p className={`text-[9px] font-bold leading-snug mt-0.5 ${darkMode ? 'text-white/35' : 'text-gray-400'}`}>
+                Mogadishu Digital Building Permit System
               </p>
             </div>
           </div>

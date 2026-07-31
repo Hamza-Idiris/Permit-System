@@ -156,7 +156,7 @@ const forgotPassword = async (req, res) => {
         message: `Your verification code is: ${resetCode}. It will expire in 10 minutes.`,
         html: `
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-            <h2 style="color: #001F3F;">Sovereign Ledger Password Recovery</h2>
+            <h2 style="color: #001F3F;">M-DBPS Password Recovery</h2>
             <p>Verification Code: <b style="font-size: 24px; color: #001F3F;">${resetCode}</b></p>
             <p>This code will expire in 10 minutes.</p>
           </div>
@@ -236,15 +236,15 @@ const resetPassword = async (req, res) => {
       await sendEmail({
         email: user.email,
         subject: 'Password Changed Successfully',
-        message: `Hello ${user.fullName}, your password for Sovereign Ledger has been successfully updated.`,
+        message: `Hello ${user.fullName}, your password for M-DBPS has been successfully updated.`,
         html: `
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-            <h2 style="color: #001F3F;">Sovereign Ledger: Password Updated</h2>
+            <h2 style="color: #001F3F;">M-DBPS: Password Updated</h2>
             <p>Hello <b>${user.fullName}</b>,</p>
             <p>This is a confirmation that the password for your account has been successfully reset.</p>
             <p>If you did not make this change, please contact an administrator immediately to secure your account.</p>
             <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="font-size: 12px; color: #777;">Urban Permit Authority - Mogadishu Digital Sovereignty</p>
+            <p style="font-size: 12px; color: #777;">M-DBPS — Mogadishu Digital Building Permit System</p>
           </div>
         `
       });

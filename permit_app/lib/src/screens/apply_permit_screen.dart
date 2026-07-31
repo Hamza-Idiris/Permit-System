@@ -302,7 +302,10 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
     );
   }
 
-  Future<void> _completeApplyAfterPayment(double actualAmount) async {
+  Future<void> _completeApplyAfterPayment(
+    double actualAmount, {
+    PaymentProgressController? progress,
+  }) async {
     const storage = FlutterSecureStorage();
     final String storedName = await storage.read(key: 'fullName') ?? 'Official Member';
     final String storedPhone = await storage.read(key: 'phone') ?? '061XXXXXXX';
@@ -325,9 +328,29 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
 
     if (!mounted) return;
     if (result['success']) {
-      _showSuccessAnimation();
       _showNotification('Permit Applied!', 'Application Ref: ${_plotIdController.text}. Payment confirmed.');
+      void revealSuccess(PaymentProgressController ctrl) {
+        ctrl.showSuccess(
+          title: 'SUCCESS',
+          message: 'Your application is being processed.',
+          onDone: () {
+            if (mounted) Navigator.pop(context);
+          },
+        );
+      }
+
+      if (progress != null) {
+        revealSuccess(progress);
+      } else {
+        final ctrl = showPaymentProgressDialog(
+          context,
+          loadingTitle: 'Submitting Application',
+          loadingMessage: 'Please wait…',
+        );
+        WidgetsBinding.instance.addPostFrameCallback((_) => revealSuccess(ctrl));
+      }
     } else {
+      progress?.dismiss();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']), backgroundColor: Colors.red));
     }
   }
@@ -343,7 +366,12 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
         amount: _totalFee,
       );
       if (paymentResult?['success'] == true && mounted) {
-        await _completeApplyAfterPayment(_totalFee);
+        final progress = showPaymentProgressDialog(
+          context,
+          loadingTitle: 'Submitting Application',
+          loadingMessage: 'Payment confirmed. Please wait while we finalize your application…',
+        );
+        await _completeApplyAfterPayment(_totalFee, progress: progress);
       }
       return;
     }
@@ -504,7 +532,13 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                         }
 
                         if (mounted) Navigator.pop(context);
-                        await _completeApplyAfterPayment(actualAmount);
+                        if (!mounted) return;
+                        final progress = showPaymentProgressDialog(
+                          context,
+                          loadingTitle: 'Submitting Application',
+                          loadingMessage: 'Payment confirmed. Please wait while we finalize your application…',
+                        );
+                        await _completeApplyAfterPayment(actualAmount, progress: progress);
                       },
                       child: const Text('AUTHORIZE PAYMENT', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
                     ),
@@ -518,165 +552,275 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
     );
   }
 
-  void _showSuccessAnimation() {
-    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: false,
-      transitionDuration: const Duration(milliseconds: 600),
-      pageBuilder: (context, anim1, anim2) => Center(
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.8,
-            padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-            borderRadius: BorderRadius.circular(32),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.check_circle, size: 80, color: ColorPallete.successGreen),
-              const SizedBox(height: 24),
-              Text('SUCCESS', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: isDark ? Colors.white : ColorPallete.primaryNavy, letterSpacing: 2)),
-              const SizedBox(height: 12),
-              Text('Your application is being processed.', textAlign: TextAlign.center, style: TextStyle(color: isDark ? Colors.white54 : ColorPallete.hintTextColor)),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: ColorPallete.primaryNavy, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                  onPressed: () { Navigator.pop(context); Navigator.pop(context); },
-                  child: const Text('DONE'),
-                ),
-              ),
-            ],
-          ),
-        ),
-        ), // Added missing Material closing
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
-    final primaryColor = isDark ? Colors.white : ColorPallete.primaryNavy;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     bool isValid = _isFormValid();
 
     return Scaffold(
-      backgroundColor: isDark ? ColorPallete.darkBackgroundColor : ColorPallete.backgroundColor,
+      backgroundColor: ColorPallete.scaffold(isDark),
       appBar: const CivicAppBar(title: 'New Application'),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionTitle(Icons.home_work_rounded, 'PROPERTY INFO', isDark),
-              const SizedBox(height: 20),
-              _buildTextField('Plot Identifier', _plotIdController, 'e.g. MOG-10293', isDark),
-              const SizedBox(height: 15),
-              _buildDropdown('District Authority', _isLoadingDistricts ? ['Loading...'] : _districts, _selectedDistrict, isDark, _isLoadingDistricts ? null : (val) {
-                setState(() => _selectedDistrict = val);
-                _validateForm();
-              }),
-              const SizedBox(height: 15),
-              _buildDropdown('Land Size', _plotSizes, _selectedPlotSize, isDark, (val) {
-                setState(() { _selectedPlotSize = val; _calculateFee(); _validateForm(); });
-              }),
-              if (_selectedPlotSize == 'Custom') ...[
-                const SizedBox(height: 15),
-                Row(
-                  children: [
-                    Expanded(child: _buildTextField('Width (m)', _customWidthController, '15.0', isDark, isNumber: true)),
-                    const SizedBox(width: 15),
-                    Expanded(child: _buildTextField('Length (m)', _customLengthController, '20.0', isDark, isNumber: true)),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 15),
-              _buildDropdown('Request Type', ['New Construction', 'Renovation'], _selectedRequestType, isDark, (val) {
-                setState(() {
-                  _selectedRequestType = val!;
-                  _updateBuildingTypesList();
-                });
-              }),
-              const SizedBox(height: 15),
-              _buildDropdown(_selectedRequestType == 'Renovation' ? 'Renovation Type' : 'Architecture Type', _isLoadingBuildingTypes ? ['Loading...'] : _buildingTypes, _selectedBuildingType, isDark, _isLoadingBuildingTypes ? null : (val) {
-                setState(() { _selectedBuildingType = val; _calculateFee(); _validateForm(); });
-              }),
-              
-              ...() {
-                final selectedTypeObj = _dynamicBuildingTypes.firstWhere((b) => b['name'] == _selectedBuildingType, orElse: () => null);
-                bool isPerFloor = selectedTypeObj != null ? (selectedTypeObj['isPerFloor'] ?? false) : false;
-                if (isPerFloor) {
-                  return [
-                    const SizedBox(height: 15),
-                    _buildTextField('Structural Floors', _floorsController, 'e.g. 2', isDark, isNumber: true),
-                  ];
-                }
-                return <Widget>[];
-              }(),
-
-              const SizedBox(height: 40),
-              
-              // Premium Fee Banner
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(30),
+                padding: const EdgeInsets.fromLTRB(18, 20, 18, 22),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF1E293B)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10))],
+                  color: ColorPallete.surface(isDark),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? Colors.white10 : ColorPallete.borderColor,
+                  ),
+                  boxShadow: isDark
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle(Icons.home_work_rounded, 'PROPERTY INFO', isDark),
+                    const SizedBox(height: 18),
+                    _buildTextField('Plot Identifier', _plotIdController, 'e.g. MOG-10293', isDark),
+                    const SizedBox(height: 15),
+                    _buildDropdown(
+                      'District Authority',
+                      _isLoadingDistricts ? ['Loading...'] : _districts,
+                      _selectedDistrict,
+                      isDark,
+                      _isLoadingDistricts
+                          ? null
+                          : (val) {
+                              setState(() => _selectedDistrict = val);
+                              _validateForm();
+                            },
+                    ),
+                    const SizedBox(height: 15),
+                    _buildDropdown(
+                      'Request Type',
+                      ['New Construction', 'Renovation'],
+                      _selectedRequestType,
+                      isDark,
+                      (val) {
+                        setState(() {
+                          _selectedRequestType = val!;
+                          _updateBuildingTypesList();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 15),
+                    _buildDropdown('Land Size', _plotSizes, _selectedPlotSize, isDark, (val) {
+                      setState(() {
+                        _selectedPlotSize = val;
+                        _calculateFee();
+                        _validateForm();
+                      });
+                    }),
+                    if (_selectedPlotSize == 'Custom') ...[
+                      const SizedBox(height: 15),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildTextField(
+                              'Width (m)',
+                              _customWidthController,
+                              '15.0',
+                              isDark,
+                              isNumber: true,
+                            ),
+                          ),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: _buildTextField(
+                              'Length (m)',
+                              _customLengthController,
+                              '20.0',
+                              isDark,
+                              isNumber: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 15),
+                    _buildDropdown(
+                      _selectedRequestType == 'Renovation'
+                          ? 'Renovation Type'
+                          : 'Architecture Type',
+                      _isLoadingBuildingTypes ? ['Loading...'] : _buildingTypes,
+                      _selectedBuildingType,
+                      isDark,
+                      _isLoadingBuildingTypes
+                          ? null
+                          : (val) {
+                              setState(() {
+                                _selectedBuildingType = val;
+                                _calculateFee();
+                                _validateForm();
+                              });
+                            },
+                    ),
+                    ...() {
+                      final selectedTypeObj = _dynamicBuildingTypes.firstWhere(
+                        (b) => b['name'] == _selectedBuildingType,
+                        orElse: () => null,
+                      );
+                      bool isPerFloor = selectedTypeObj != null
+                          ? (selectedTypeObj['isPerFloor'] ?? false)
+                          : false;
+                      if (isPerFloor) {
+                        return [
+                          const SizedBox(height: 15),
+                          _buildTextField(
+                            'Structural Floors',
+                            _floorsController,
+                            'e.g. 2',
+                            isDark,
+                            isNumber: true,
+                          ),
+                        ];
+                      }
+                      return <Widget>[];
+                    }(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(26),
+                decoration: BoxDecoration(
+                  gradient: ColorPallete.accentGradient,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: ColorPallete.primaryNavy.withOpacity(0.22),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
                 child: Column(
                   children: [
-                    const Text('OFFICIAL APPRAISAL FEE', style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2)),
+                    Text(
+                      'OFFICIAL APPRAISAL FEE',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.6,
+                      ),
+                    ),
                     const SizedBox(height: 10),
-                    Text('\$${_totalFee.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 10),
+                    Text(
+                      '\$${_totalFee.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 42,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.verified_rounded, color: Colors.blueAccent, size: 16),
+                          Icon(Icons.verified_rounded, color: Colors.white, size: 16),
                           SizedBox(width: 8),
-                          Text('MUNICIPAL GUARANTEED', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                          Text(
+                            'MUNICIPAL GUARANTEED',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ],
                 ),
               ),
-
-              const SizedBox(height: 40),
-              _buildSectionTitle(Icons.file_present_rounded, 'DOCUMENTATION', isDark),
               const SizedBox(height: 20),
-              _buildUploadButton('Ownership Deed (PDF) *', _landDocBytes != null, () => _pickDocument('land'), isDark, subtitle: _landDocName),
-              const SizedBox(height: 12),
-              _buildUploadButton('Passport / National ID *', _passportBytes != null, () => _pickDocument('passport'), isDark, subtitle: _passportName),
-
-              const SizedBox(height: 50),
-              SizedBox(
+              Container(
                 width: double.infinity,
-                height: 60,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isValid ? ColorPallete.successGreen : Colors.grey.withOpacity(0.2),
-                    foregroundColor: Colors.white,
-                    elevation: isValid ? 8 : 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                padding: const EdgeInsets.fromLTRB(18, 20, 18, 22),
+                decoration: BoxDecoration(
+                  color: ColorPallete.surface(isDark),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? Colors.white10 : ColorPallete.borderColor,
                   ),
-                  onPressed: isValid ? _showPaymentModal : null,
-                  child: const Text('INITIALIZE APPLICATION', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                  boxShadow: isDark
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle(Icons.file_present_rounded, 'DOCUMENTATION', isDark),
+                    const SizedBox(height: 18),
+                    _buildUploadButton(
+                      'Ownership Deed (PDF) *',
+                      _landDocBytes != null,
+                      () => _pickDocument('land'),
+                      isDark,
+                      subtitle: _landDocName,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildUploadButton(
+                      'Passport / National ID *',
+                      _passportBytes != null,
+                      () => _pickDocument('passport'),
+                      isDark,
+                      subtitle: _passportName,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isValid
+                        ? ColorPallete.primaryNavy
+                        : (isDark ? Colors.white12 : ColorPallete.borderColor),
+                    foregroundColor: Colors.white,
+                    disabledForegroundColor: isDark ? Colors.white38 : ColorPallete.hintTextColor,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: isValid ? _showPaymentModal : null,
+                  child: const Text(
+                    'Initialize Application',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -687,9 +831,25 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
   Widget _buildSectionTitle(IconData icon, String title, bool isDark) {
     return Row(
       children: [
-        Icon(icon, color: isDark ? Colors.white38 : ColorPallete.primaryNavy, size: 20),
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: ColorPallete.accentTeal.withOpacity(isDark ? 0.2 : 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: isDark ? Colors.white70 : ColorPallete.accentTeal, size: 18),
+        ),
         const SizedBox(width: 10),
-        Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : ColorPallete.hintTextColor, letterSpacing: 1.5)),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white60 : ColorPallete.primaryNavy,
+            letterSpacing: 1.2,
+          ),
+        ),
       ],
     );
   }
@@ -699,22 +859,49 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : ColorPallete.primaryNavy, fontSize: 13)),
+          padding: const EdgeInsets.only(left: 2, bottom: 8),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white70 : ColorPallete.primaryNavy,
+              fontSize: 13,
+            ),
+          ),
         ),
         TextField(
           controller: controller,
-          keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-          style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
+          keyboardType: isNumber
+              ? const TextInputType.numberWithOptions(decimal: true)
+              : TextInputType.text,
+          style: TextStyle(
+            color: isDark ? Colors.white : ColorPallete.mainTextColor,
+            fontWeight: FontWeight.w600,
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: isDark ? Colors.white24 : ColorPallete.hintTextColor),
+            hintStyle: TextStyle(
+              color: isDark ? Colors.white24 : ColorPallete.hintTextColor,
+              fontSize: 14,
+            ),
             filled: true,
-            fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
-            contentPadding: const EdgeInsets.all(18),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: isDark ? BorderSide.none : BorderSide(color: Colors.grey.shade200)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: ColorPallete.primaryNavy, width: 2)),
+            fillColor: isDark ? Colors.white.withOpacity(0.05) : ColorPallete.backgroundColor,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : ColorPallete.borderColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : ColorPallete.borderColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: isDark ? ColorPallete.accentTeal : ColorPallete.primaryNavy,
+                width: 1.8,
+              ),
+            ),
           ),
         ),
       ],
@@ -726,22 +913,48 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : ColorPallete.primaryNavy, fontSize: 13)),
+          padding: const EdgeInsets.only(left: 2, bottom: 8),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white70 : ColorPallete.primaryNavy,
+              fontSize: 13,
+            ),
+          ),
         ),
         DropdownButtonFormField<String>(
           value: items.contains(selectedValue) ? selectedValue : null,
-          dropdownColor: isDark ? const Color(0xFF2D2D2D) : Colors.white,
-          style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
+          dropdownColor: isDark ? ColorPallete.cardDark : Colors.white,
+          style: TextStyle(
+            color: isDark ? Colors.white : ColorPallete.mainTextColor,
+            fontWeight: FontWeight.w600,
+          ),
           items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
           onChanged: onChanged,
-          icon: Icon(Icons.keyboard_arrow_down_rounded, color: isDark ? Colors.white38 : ColorPallete.hintTextColor),
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: isDark ? Colors.white38 : ColorPallete.hintTextColor,
+          ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: isDark ? BorderSide.none : BorderSide(color: Colors.grey.shade200)),
+            fillColor: isDark ? Colors.white.withOpacity(0.05) : ColorPallete.backgroundColor,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : ColorPallete.borderColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : ColorPallete.borderColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: isDark ? ColorPallete.accentTeal : ColorPallete.primaryNavy,
+                width: 1.8,
+              ),
+            ),
           ),
         ),
       ],
@@ -751,30 +964,66 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
   Widget _buildUploadButton(String title, bool isUploaded, VoidCallback onTap, bool isDark, {String? subtitle}) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? (isUploaded ? ColorPallete.successGreen.withOpacity(0.1) : Colors.white.withOpacity(0.03)) : Colors.white,
-          border: Border.all(color: isUploaded ? ColorPallete.successGreen : (isDark ? Colors.white10 : Colors.grey.shade200), width: 2),
-          borderRadius: BorderRadius.circular(18),
+          color: isUploaded
+              ? ColorPallete.successGreen.withOpacity(isDark ? 0.12 : 0.08)
+              : (isDark ? Colors.white.withOpacity(0.04) : ColorPallete.backgroundColor),
+          border: Border.all(
+            color: isUploaded
+                ? ColorPallete.successGreen.withOpacity(0.5)
+                : (isDark ? Colors.white10 : ColorPallete.borderColor),
+          ),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
-            Icon(isUploaded ? Icons.verified_rounded : Icons.cloud_upload_rounded, color: isUploaded ? ColorPallete.successGreen : (isDark ? Colors.white38 : ColorPallete.primaryNavy), size: 28),
-            const SizedBox(width: 20),
+            Icon(
+              isUploaded ? Icons.verified_rounded : Icons.cloud_upload_rounded,
+              color: isUploaded
+                  ? ColorPallete.successGreen
+                  : (isDark ? Colors.white54 : ColorPallete.accentTeal),
+              size: 26,
+            ),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: TextStyle(fontWeight: FontWeight.w900, color: isDark ? Colors.white : ColorPallete.primaryNavy, fontSize: 14)),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : ColorPallete.primaryNavy,
+                      fontSize: 14,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(isUploaded ? (subtitle ?? 'Verified Upload') : 'Click to Upload', style: TextStyle(color: isUploaded ? ColorPallete.successGreen : ColorPallete.hintTextColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                  Text(
+                    isUploaded ? (subtitle ?? 'Verified Upload') : 'Click to Upload',
+                    style: TextStyle(
+                      color: isUploaded ? ColorPallete.successGreen : ColorPallete.hintTextColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
-            if (isUploaded) const Icon(Icons.edit_note_rounded, color: ColorPallete.successGreen)
-            else Text('BROWSE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : ColorPallete.primaryNavy, letterSpacing: 1)),
+            if (isUploaded)
+              const Icon(Icons.edit_note_rounded, color: ColorPallete.successGreen)
+            else
+              Text(
+                'BROWSE',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white54 : ColorPallete.primaryNavy,
+                  letterSpacing: 0.8,
+                ),
+              ),
           ],
         ),
       ),

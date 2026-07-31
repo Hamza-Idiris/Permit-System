@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
             useInheritedMediaQuery: true,
             builder: DevicePreview.appBuilder,
             debugShowCheckedModeBanner: false,
-            title: 'Urban Permits',
+            title: 'M-DBPS',
             themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
             theme: ThemeData(
               useMaterial3: true,

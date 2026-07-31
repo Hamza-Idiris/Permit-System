@@ -123,7 +123,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                       const SizedBox(width: 10),
                       const Text(
-                        'Urban Permits',
+                        'M-DBPS',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,

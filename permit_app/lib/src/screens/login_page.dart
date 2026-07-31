@@ -18,6 +18,12 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _submitted = false;
+  String? _formError;
+
+  bool get _emailInvalid => _submitted && _emailController.text.trim().isEmpty;
+  bool get _passwordInvalid =>
+      _submitted && _passwordController.text.trim().isEmpty;
 
   @override
   void dispose() {
@@ -26,18 +32,22 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  void _clearFormError() {
+    if (_formError != null) setState(() => _formError = null);
+  }
+
   void _handleLogin() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
+    setState(() {
+      _submitted = true;
+      _formError = null;
+    });
+
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter both email and password'),
-          backgroundColor: ColorPallete.errorRed,
-        ),
-      );
+      setState(() => _formError = 'Please enter both email and password');
       return;
     }
 
@@ -59,12 +69,8 @@ class _LoginPageState extends State<LoginPage> {
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Login Failed'),
-            backgroundColor: ColorPallete.errorRed,
-          ),
-        );
+        setState(() =>
+            _formError = result['message'] ?? 'Invalid credentials');
       }
     }
   }
@@ -100,7 +106,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Urban Permits',
+                    'M-DBPS',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 26,
@@ -110,8 +116,9 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Mogadishu Municipality',
-                    style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, fontWeight: FontWeight.w500),
+                    'Mogadishu Digital Building Permit System',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
@@ -157,7 +164,15 @@ class _LoginPageState extends State<LoginPage> {
                       TextField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: _inputDecoration('Enter your email', Icons.mail_outline_rounded),
+                        onChanged: (_) {
+                          _clearFormError();
+                          if (_submitted) setState(() {});
+                        },
+                        decoration: _inputDecoration(
+                          'Enter your email',
+                          Icons.mail_outline_rounded,
+                          showErrorBorder: _emailInvalid,
+                        ),
                       ),
                       const SizedBox(height: 18),
                       const Text('Password', style: TextStyle(fontWeight: FontWeight.w700, color: ColorPallete.primaryNavy, fontSize: 13)),
@@ -165,7 +180,15 @@ class _LoginPageState extends State<LoginPage> {
                       TextField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
-                        decoration: _inputDecoration('Enter your password', Icons.lock_outline_rounded).copyWith(
+                        onChanged: (_) {
+                          _clearFormError();
+                          if (_submitted) setState(() {});
+                        },
+                        decoration: _inputDecoration(
+                          'Enter your password',
+                          Icons.lock_outline_rounded,
+                          showErrorBorder: _passwordInvalid,
+                        ).copyWith(
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -190,7 +213,19 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      if (_formError != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          _formError!,
+                          style: const TextStyle(
+                            color: ColorPallete.errorRed,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ] else
+                        const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -240,25 +275,27 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  InputDecoration _inputDecoration(String hint, IconData icon) {
+  InputDecoration _inputDecoration(String hint, IconData icon, {bool showErrorBorder = false}) {
+    final borderColor = showErrorBorder ? ColorPallete.errorRed : ColorPallete.borderColor;
+    final focusedColor = showErrorBorder ? ColorPallete.errorRed : ColorPallete.primaryNavy;
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(color: ColorPallete.hintTextColor, fontSize: 14),
-      prefixIcon: Icon(icon, color: ColorPallete.hintTextColor, size: 20),
+      prefixIcon: Icon(icon, color: showErrorBorder ? ColorPallete.errorRed : ColorPallete.hintTextColor, size: 20),
       filled: true,
       fillColor: ColorPallete.backgroundColor,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: ColorPallete.borderColor),
+        borderSide: BorderSide(color: borderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: ColorPallete.borderColor),
+        borderSide: BorderSide(color: borderColor, width: showErrorBorder ? 1.5 : 1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: ColorPallete.accentTeal, width: 1.5),
+        borderSide: BorderSide(color: focusedColor, width: 1.8),
       ),
     );
   }

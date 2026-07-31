@@ -173,7 +173,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Update your password to keep your\nUrban Permits account secure.',
+                  'Update your password to keep your\nM-DBPS account secure.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: ColorPallete.hintTextColor, fontSize: 14),
                 ),

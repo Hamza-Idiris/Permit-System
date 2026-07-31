@@ -84,11 +84,11 @@ const createUser = async (req, res) => {
       try {
         await sendEmail({
           email: user.email,
-          subject: 'Welcome to Sovereign Ledger - Create Your Password',
+          subject: 'Welcome to M-DBPS - Create Your Password',
           message: `Welcome to the team, ${user.fullName}! An administrator has created your account. Please use the following link to set your permanent password: ${setupUrl}\n\nYour temporary verification code is: ${resetCode}`,
           html: `
             <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-              <h2 style="color: #001F3F;">Welcome to Sovereign Ledger</h2>
+              <h2 style="color: #001F3F;">Welcome to M-DBPS</h2>
               <p>Hello <b>${user.fullName}</b>,</p>
               <p>Your official account has been created successfully as a <b>${role.toUpperCase()}</b>.</p>
               <p>To complete your setup, please set your permanent password by clicking the button below:</p>
@@ -98,7 +98,7 @@ const createUser = async (req, res) => {
               <p>Alternatively, you can go to the login page and use this verification code: <b style="font-size: 18px; color: #001F3F;">${resetCode}</b></p>
               <p>This link will remain active for 24 hours.</p>
               <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-              <p style="font-size: 12px; color: #666;">Mogadishu Urban Permit Authority - Digital Sovereignty Engine</p>
+              <p style="font-size: 12px; color: #666;">M-DBPS — Mogadishu Digital Building Permit System</p>
             </div>
           `
         });
@@ -381,7 +381,7 @@ const adminResetPassword = async (req, res) => {
     try {
       await sendEmail({
         email: user.email,
-        subject: 'Password Reset - Sovereign Ledger',
+        subject: 'Password Reset - M-DBPS',
         message: `Hello ${user.fullName}, an administrator reset your password. Temporary password: ${tempPassword}. Verification code: ${resetCode}`,
         html: `
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">

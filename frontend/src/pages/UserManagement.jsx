@@ -583,7 +583,7 @@ const UserManagement = () => {
       {/* Delete Confirm */}
       {deleteConfirmId && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-navy/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="bg-card-bg rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden border border-border-color animate-in zoom-in-95 duration-300">
+          <div className="bg-card-bg rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-600 animate-in zoom-in-95 duration-300">
             <div className="p-8">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-12 h-12 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center">
@@ -594,7 +594,7 @@ const UserManagement = () => {
                 </h3>
               </div>
               <p className="text-[14px] text-text-muted font-bold leading-relaxed transition-colors">
-                Ma hubtaa inaad tirtirto qofkan? Tallaabadan xogta waa la waayi doonaa.
+                Are you sure you want to delete this person? This action will permanently remove their data.
               </p>
             </div>
             <div className="px-8 py-6 border-t border-border-color flex justify-end gap-3 bg-navy/5 transition-colors duration-300">
@@ -602,7 +602,7 @@ const UserManagement = () => {
                 onClick={() => setDeleteConfirmId(null)}
                 className="px-6 py-2.5 text-[13px] font-black text-text-muted hover:text-navy transition-colors uppercase tracking-widest"
               >
-                Maya
+                No
               </button>
               <button
                 onClick={confirmDelete}

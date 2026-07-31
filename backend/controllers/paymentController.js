@@ -75,7 +75,7 @@ const processWaafiPay = async (req, res) => {
             if (app.user) {
               await Notification.create({
                 user: app.user,
-                message: `Qidmadaada codsiga waa la bixiyay. (${transactionId})`,
+                message: `Your application fee has been paid. (${transactionId})`,
                 type: 'Success',
                 relatedId: app._id
               });

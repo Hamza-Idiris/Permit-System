@@ -60,8 +60,8 @@ const Login = () => {
               <ShieldCheck className="text-white" size={24} />
             </div>
             <div className="flex flex-col">
-              <span className="text-white font-black text-xl tracking-tight uppercase leading-none">Sovereign Ledger</span>
-              <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1">Urban Permit Authority</span>
+              <span className="text-white font-black text-xl tracking-tight leading-none">M-DBPS</span>
+              <span className="text-white/50 text-[10px] font-semibold mt-1 leading-snug">Mogadishu Digital Building Permit System</span>
             </div>
           </div>
 
@@ -71,7 +71,7 @@ const Login = () => {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-indigo-100">Modern State.</span>
             </h1>
             <p className="text-lg text-white/60 font-medium leading-relaxed mb-12">
-              The official Sovereign Ledger for the Urban Permit Authority. Modernizing infrastructure through digital governance and secure workflows.
+              The official M-DBPS — Mogadishu Digital Building Permit System. Modernizing infrastructure through digital governance and secure workflows.
             </p>
 
             <div className="grid grid-cols-3 gap-8 pt-10 border-t border-white/10">

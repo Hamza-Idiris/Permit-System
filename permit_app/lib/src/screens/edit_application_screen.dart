@@ -349,7 +349,12 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
         amount: diffAmount,
       );
       if (paymentResult?['success'] == true && mounted) {
-        _processSubmission();
+        final progress = showPaymentProgressDialog(
+          context,
+          loadingTitle: 'Submitting Application',
+          loadingMessage: 'Payment confirmed. Please wait while we update your application…',
+        );
+        await _processSubmission(progress: progress);
       }
       return;
     }
@@ -542,7 +547,7 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
     }
   }
 
-  Future<void> _processSubmission() async {
+  Future<void> _processSubmission({PaymentProgressController? progress}) async {
     setState(() { _isSubmitting = true; _errorMessage = null; });
 
     final formData = widget.permit['formData'] ?? {};
@@ -572,8 +577,19 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
     setState(() => _isSubmitting = false);
 
     if (result['success']) {
-      _showSuccessDialog();
+      if (progress != null) {
+        progress.showSuccess(
+          title: 'SUCCESS',
+          message: 'Your corrected application has been sent back for review.',
+          onDone: () {
+            if (mounted) Navigator.pop(context, true);
+          },
+        );
+      } else {
+        _showSuccessDialog();
+      }
     } else {
+      progress?.dismiss();
       setState(() => _errorMessage = result['message'] ?? 'Submission failed. Please try again.');
     }
   }

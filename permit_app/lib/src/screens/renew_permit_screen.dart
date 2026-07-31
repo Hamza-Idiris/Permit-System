@@ -101,30 +101,24 @@ class _RenewPermitScreenState extends State<RenewPermitScreen> {
       if (payment?['success'] != true || !mounted) return;
 
       setState(() => _submitting = true);
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(child: CircularProgressIndicator(color: ColorPallete.primaryNavy)),
+      final progress = showPaymentProgressDialog(
+        context,
+        loadingTitle: 'Submitting Renew',
+        loadingMessage: 'Payment confirmed. Please wait while we submit your renew request…',
       );
 
       final renew = await _permitService.renewPermit(applicationId: id, totalFee: fee);
       if (!mounted) return;
-      Navigator.pop(context);
       setState(() => _submitting = false);
 
       if (renew['success'] == true) {
-        await showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Renew Submitted'),
-            content: Text('Your renew application was submitted. ID: ${renew['data']?['applicationId'] ?? ''}'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
-            ],
-          ),
+        progress.showSuccess(
+          title: 'SUCCESS',
+          message: 'Your renew application was submitted. ID: ${renew['data']?['applicationId'] ?? ''}',
+          onDone: _load,
         );
-        _load();
       } else {
+        progress.dismiss();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(renew['message']?.toString() ?? 'Renew failed')),
         );
