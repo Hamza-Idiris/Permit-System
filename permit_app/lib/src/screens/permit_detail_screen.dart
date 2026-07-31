@@ -1,16 +1,15 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/screens/edit_application_screen.dart';
-import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:permit_app/src/widgets/civic_app_bar.dart';
-import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class PermitDetailScreen extends StatefulWidget {
@@ -72,6 +71,17 @@ class _PermitDetailScreenState extends State<PermitDetailScreen> {
     return 'System';
   }
 
+  bool get _isDabaqBuilding {
+    final buildingType = widget.permit['formData']?['buildingCategory']?.toString() ?? '';
+    return buildingType.toLowerCase().contains('dabaq');
+  }
+
+  String _getRequestType() {
+    final type = widget.permit['formData']?['requestType']?.toString();
+    if (type != null && type.isNotEmpty) return type;
+    return 'New Construction';
+  }
+
   String _getQrDataString() {
     if (widget.permit['qrData'] != null && widget.permit['qrData'].toString().isNotEmpty) {
       return widget.permit['qrData'].toString();
@@ -130,25 +140,44 @@ class _PermitDetailScreenState extends State<PermitDetailScreen> {
     await Future.delayed(const Duration(milliseconds: 100));
 
     try {
-      final RenderRepaintBoundary? boundary = _boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) throw Exception("Failed to capture screen area");
+      final RenderRepaintBoundary? boundary =
+          _boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) throw Exception('Failed to capture certificate area');
 
       final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
       final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) throw Exception("Failed to generate image data");
+      if (byteData == null) throw Exception('Failed to generate image data');
       final Uint8List pngBytes = byteData.buffer.asUint8List();
 
-      final String? outputFile = await FilePicker.saveFile(
-        dialogTitle: 'Save Permit Certificate',
-        fileName: 'permit_certificate_${widget.permit['permitId'] ?? widget.permit['_id']}.png',
-        bytes: pngBytes,
+      final String fileName =
+          'permit_certificate_${widget.permit['permitId'] ?? widget.permit['_id'] ?? 'approved'}.png';
+
+      // Avoid FilePicker.saveFile on Android (returns broken /document/N paths).
+      // Write to a temp file, then open the system share sheet so the user can Save/Download.
+      final Directory dir = await getTemporaryDirectory();
+      final File outFile = File('${dir.path}/$fileName');
+      await outFile.writeAsBytes(pngBytes, flush: true);
+
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(outFile.path, mimeType: 'image/png', name: fileName)],
+          subject: 'Permit Certificate',
+          text: 'Official building permit certificate',
+        ),
       );
 
-      if (outputFile != null && context.mounted) {
+      if (context.mounted && result.status == ShareResultStatus.success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Permit Certificate downloaded successfully!'),
+            content: Text('Permit Certificate shared successfully!'),
             backgroundColor: ColorPallete.successGreen,
+          ),
+        );
+      } else if (context.mounted && result.status == ShareResultStatus.dismissed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Certificate ready — choose Save/Downloads in the share sheet.'),
+            backgroundColor: ColorPallete.primaryNavy,
           ),
         );
       }
@@ -243,8 +272,10 @@ class _PermitDetailScreenState extends State<PermitDetailScreen> {
                           _buildDetailRow('District Name', widget.permit['formData']?['district']?.toString() ?? 'N/A'),
                           if (isApproved)
                             _buildDetailRow('Approved By', _getApprovedBy()),
+                          _buildDetailRow('Application Type', _getRequestType()),
                           _buildDetailRow('Building Type', widget.permit['formData']?['buildingCategory']?.toString() ?? 'N/A'),
-                          _buildDetailRow('Floors', widget.permit['formData']?['floors']?.toString() ?? '1'),
+                          if (_isDabaqBuilding)
+                            _buildDetailRow('Floors', widget.permit['formData']?['floors']?.toString() ?? '1'),
                           _buildDetailRow('Size', '${widget.permit['formData']?['landArea']?.toString() ?? '0'} m²'),
                           if (isApproved)
                             _buildDetailRow('Approved Time', _formatApprovedTime(widget.permit['approvalDate']?.toString() ?? widget.permit['updatedAt']?.toString())),

@@ -40,6 +40,7 @@ class AuthProvider extends ChangeNotifier {
           await _storage.write(key: 'email', value: data['email'] ?? '');
           await _storage.write(key: 'phone', value: data['phone'] ?? '+252 61 123 4567');
           await _storage.write(key: 'passwordLastChanged', value: data['passwordLastChanged'] ?? '');
+          await _storage.write(key: 'createdAt', value: data['createdAt']?.toString() ?? '');
           
           // Trigger WebSocket connection for live updates
           WebSocketService().connect();

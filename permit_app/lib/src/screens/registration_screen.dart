@@ -21,6 +21,25 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _passwordTouched = false;
+
+  static final RegExp _complexityRegex =
+      RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$');
+
+  bool get _hasMinLength => _passwordController.text.length >= 8;
+  bool get _hasUpper => _passwordController.text.contains(RegExp(r'[A-Z]'));
+  bool get _hasLower => _passwordController.text.contains(RegExp(r'[a-z]'));
+  bool get _hasNumber => _passwordController.text.contains(RegExp(r'[0-9]'));
+  bool get _hasSpecial => _passwordController.text.contains(RegExp(r'[@$!%*?&]'));
+  bool get _isPasswordValid => _complexityRegex.hasMatch(_passwordController.text);
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
@@ -88,7 +107,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       return;
     }
 
-    final complexityRegex = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$');
+    final complexityRegex = _complexityRegex;
     if (!complexityRegex.hasMatch(password)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -272,7 +291,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       TextField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
-                        decoration: _inputDecoration('Create a password', Icons.lock_outline_rounded).copyWith(
+                        onTap: () => setState(() => _passwordTouched = true),
+                        onChanged: (_) => setState(() => _passwordTouched = true),
+                        decoration: _inputDecoration(
+                          'Create a password',
+                          Icons.lock_outline_rounded,
+                          showErrorBorder: _passwordTouched && !_isPasswordValid,
+                        ).copyWith(
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -283,6 +308,37 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           ),
                         ),
                       ),
+                      if (_passwordTouched && !_isPasswordValid) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                          decoration: BoxDecoration(
+                            color: ColorPallete.errorRed.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: ColorPallete.errorRed.withOpacity(0.25)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Password must contain:',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: ColorPallete.errorRed,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              _passwordRule('At least 8 characters', _hasMinLength),
+                              _passwordRule('One uppercase letter (A–Z)', _hasUpper),
+                              _passwordRule('One lowercase letter (a–z)', _hasLower),
+                              _passwordRule('One number (0–9)', _hasNumber),
+                              _passwordRule('One special character (@\$!%*?&)', _hasSpecial),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 18),
                       const Text('Confirm Password', style: TextStyle(fontWeight: FontWeight.w700, color: ColorPallete.primaryNavy, fontSize: 13)),
                       const SizedBox(height: 8),
@@ -351,25 +407,53 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
-  InputDecoration _inputDecoration(String hint, IconData icon) {
+  Widget _passwordRule(String label, bool met) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(
+            met ? Icons.check_circle_rounded : Icons.cancel_rounded,
+            size: 15,
+            color: met ? ColorPallete.successGreen : ColorPallete.errorRed,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: met ? ColorPallete.successGreen : ColorPallete.errorRed,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint, IconData icon, {bool showErrorBorder = false}) {
+    final borderColor = showErrorBorder ? ColorPallete.errorRed : ColorPallete.borderColor;
+    final focusedColor = showErrorBorder ? ColorPallete.errorRed : ColorPallete.primaryNavy;
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(color: ColorPallete.hintTextColor, fontSize: 14),
-      prefixIcon: Icon(icon, color: ColorPallete.hintTextColor, size: 20),
+      prefixIcon: Icon(icon, color: showErrorBorder ? ColorPallete.errorRed : ColorPallete.hintTextColor, size: 20),
       filled: true,
       fillColor: ColorPallete.backgroundColor,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: ColorPallete.borderColor),
+        borderSide: BorderSide(color: borderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: ColorPallete.borderColor),
+        borderSide: BorderSide(color: borderColor, width: showErrorBorder ? 1.5 : 1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: ColorPallete.accentTeal, width: 1.5),
+        borderSide: BorderSide(color: focusedColor, width: 1.8),
       ),
     );
   }

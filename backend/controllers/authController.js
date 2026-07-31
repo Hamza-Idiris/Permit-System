@@ -46,6 +46,7 @@ const register = async (req, res) => {
         district: user.district,
         gender: user.gender,
         passwordLastChanged: user.passwordLastChanged,
+        createdAt: user.createdAt,
         token: generateToken(user._id, user.role, user.fullName, user.district),
       });
     } else {
@@ -99,6 +100,7 @@ const login = async (req, res) => {
       district: user.district,
       isActive: user.isActive !== false,
       passwordLastChanged: user.passwordLastChanged,
+      createdAt: user.createdAt,
       token: generateToken(user._id, user.role, user.fullName, user.district),
     });
   } catch (error) {
