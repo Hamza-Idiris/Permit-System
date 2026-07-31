@@ -10,7 +10,7 @@ const sendEmail = async (options) => {
     });
 
     const mailOptions = {
-        from: `"Sovereign Ledger" <${process.env.EMAIL_USER}>`,
+        from: `"M-DBPS" <${process.env.EMAIL_USER}>`,
         to: options.email,
         subject: options.subject,
         text: options.message,

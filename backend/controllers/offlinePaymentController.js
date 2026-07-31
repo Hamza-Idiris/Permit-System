@@ -66,7 +66,7 @@ const syncApplicationPaid = async (applicationId, amount) => {
   if (app.user) {
     await Notification.create({
       user: app.user,
-      message: `Qidmadaada codsiga waa la bixiyay.`,
+      message: `Your application fee has been paid.`,
       type: 'Success',
       relatedId: app._id,
     });

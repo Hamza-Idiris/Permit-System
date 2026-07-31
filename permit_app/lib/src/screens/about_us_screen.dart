@@ -13,7 +13,7 @@ class AboutUsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: isDark ? ColorPallete.darkBackgroundColor : const Color(0xFFF8FAFC),
       appBar: CivicAppBar(
-        title: 'Urban Permits',
+        title: 'M-DBPS',
         actions: [
           IconButton(
             onPressed: () {},
@@ -42,12 +42,12 @@ class AboutUsScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'About Sovereign Ledger',
+                      'About M-DBPS',
                       style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Sovereign Ledger serves as the official digital infrastructure of the Urban Permit Authority, providing a secure and transparent platform for managing city-wide developments and regulatory compliance.',
+                      'M-DBPS — Mogadishu Digital Building Permit System serves as the official digital infrastructure for Mogadishu permitting, providing a secure and transparent platform for managing city-wide developments and regulatory compliance.',
                       style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13, height: 1.5),
                     ),
                   ],
@@ -154,7 +154,7 @@ class AboutUsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Sovereign Ledger operates under the strict oversight of the Urban Permit Authority. Our multi-layer verification process combines automated algorithmic checks with expert human review to ensure absolute adherence to city by-laws and safety regulations.',
+                    'M-DBPS operates under municipal oversight. Our multi-layer verification process combines automated algorithmic checks with expert human review to ensure absolute adherence to city by-laws and safety regulations.',
                     style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, height: 1.6),
                   ),
                   const SizedBox(height: 20),
@@ -213,7 +213,7 @@ class AboutUsScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Applicants are required to maintain up-to-date profile information. All official notifications regarding permit milestones, payment confirmations, and compliance requests will be dispatched exclusively through the Sovereign Ledger secure dashboard.',
+                            'Applicants are required to maintain up-to-date profile information. All official notifications regarding permit milestones, payment confirmations, and compliance requests will be dispatched exclusively through the M-DBPS secure dashboard.',
                             style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.5),
                           ),
                         ],

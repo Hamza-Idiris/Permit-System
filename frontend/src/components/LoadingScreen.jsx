@@ -17,11 +17,11 @@ const LoadingScreen = () => {
             </div>
 
             <div className="flex flex-col items-center gap-2">
-                <h2 className="text-[15px] font-black text-navy uppercase tracking-[0.25em] animate-pulse">
-                    Sovereign Ledger
+                <h2 className="text-[15px] font-black text-navy tracking-tight animate-pulse">
+                    M-DBPS
                 </h2>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    Initializing Authority Portal...
+                <p className="text-[10px] font-bold text-gray-400 text-center px-4 leading-snug">
+                    Mogadishu Digital Building Permit System
                 </p>
 
                 {/* Progress bar simulation */}

@@ -224,8 +224,8 @@ const ForgotPassword = () => {
                         <ShieldCheck className="text-white" size={24} />
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-white font-black text-xl tracking-tight uppercase leading-none">Sovereign Ledger</span>
-                        <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1">Urban Permit Authority</span>
+                        <span className="text-white font-black text-xl tracking-tight leading-none">M-DBPS</span>
+                        <span className="text-white/50 text-[10px] font-semibold mt-1 leading-snug">Mogadishu Digital Building Permit System</span>
                     </div>
                 </div>
 

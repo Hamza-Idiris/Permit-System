@@ -757,7 +757,7 @@ const StaffReview = () => {
                                     {application.documents?.nationalId ? (
                                         <div
                                             onClick={() => openPreview(application.documents.nationalId)}
-                                            className="flex items-center justify-between p-3.5 bg-table-header-bg/40 rounded-[10px] border border-border-color group hover:border-navy/30 hover:bg-table-header-bg/60 transition-all cursor-pointer"
+                                            className="flex items-center justify-between p-3.5 bg-table-header-bg/40 rounded-[10px] border border-slate-200 dark:border-slate-600 group hover:border-navy/30 hover:bg-table-header-bg/60 transition-all cursor-pointer"
                                         >
                                             <div className="flex items-center gap-4 pointer-events-none">
                                                 <div className="w-9 h-9 bg-indigo-500/10 text-indigo-500 rounded-[10px] flex items-center justify-center shrink-0">
@@ -785,7 +785,7 @@ const StaffReview = () => {
                                     {application.documents?.ownershipDocs ? (
                                         <div
                                             onClick={() => openPreview(application.documents.ownershipDocs)}
-                                            className="flex items-center justify-between p-3.5 bg-table-header-bg/40 rounded-[10px] border border-border-color group hover:border-navy/30 hover:bg-table-header-bg/60 transition-all cursor-pointer"
+                                            className="flex items-center justify-between p-3.5 bg-table-header-bg/40 rounded-[10px] border border-slate-200 dark:border-slate-600 group hover:border-navy/30 hover:bg-table-header-bg/60 transition-all cursor-pointer"
                                         >
                                             <div className="flex items-center gap-4 pointer-events-none">
                                                 <div className="w-9 h-9 bg-emerald-500/10 text-emerald-500 rounded-[10px] flex items-center justify-center shrink-0">

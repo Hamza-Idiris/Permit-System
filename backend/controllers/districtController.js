@@ -21,7 +21,7 @@ const createDistrict = async (req, res) => {
         const { name, code, supervisor, description } = req.body;
 
         if (!supervisor) {
-            return res.status(400).json({ success: false, message: 'Kormeeraha degmada waa qasab (Supervisor is required)' });
+            return res.status(400).json({ success: false, message: 'District supervisor is required' });
         }
 
         const district = await District.create({

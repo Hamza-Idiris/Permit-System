@@ -12,7 +12,7 @@
   --text-main: #0F172A;
   --text-muted: #64748B;
   --text-emphasis: #001F3F;
-  --border-color: #F1F5F9;
+  --border-color: #E2E8F0;
   --header-bg: #FFFFFF;
   --table-header-bg: #F8FAFC;
 }
@@ -58,6 +58,10 @@
 }
 
 @layer components {
+  .ui-card {
+    @apply bg-card-bg rounded-[14px] border border-border-color shadow-sm;
+  }
+
   .app-container {
     @apply flex h-screen w-screen overflow-hidden gap-8 bg-bg-soft transition-colors duration-300;
   }
