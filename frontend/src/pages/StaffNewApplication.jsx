@@ -57,6 +57,8 @@ const StaffNewApplication = () => {
   const [paymentPhone, setPaymentPhone] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState(null);
+  const [offlinePin, setOfflinePin] = useState('');
 
   const authHeaders = useMemo(
     () => ({ Authorization: `Bearer ${token || localStorage.getItem('token')}` }),
@@ -213,12 +215,30 @@ const StaffNewApplication = () => {
     setError(null);
 
     // Pay first (same as mobile)
+    setPaymentMethod(null);
+    setOfflinePin('');
+    setPaymentError(null);
     setShowPaymentModal(true);
     if (!paymentPhone && selectedApplicant?.phone) {
       setPaymentPhone(selectedApplicant.phone.replace(/^\+252/, ''));
     } else if (!paymentPhone && walkIn.phone) {
       setPaymentPhone(walkIn.phone.replace(/^\+?252/, ''));
     }
+  };
+
+  const closePaymentModal = () => {
+    setShowPaymentModal(false);
+    setPaymentMethod(null);
+    setOfflinePin('');
+    setPaymentError(null);
+  };
+
+  const finishAfterPayment = async () => {
+    const applicant = await resolveApplicantId();
+    const app = await submitApplication(applicant);
+    setCreatedAppId(app.applicationId);
+    closePaymentModal();
+    setShowSuccess(true);
   };
 
   const handlePaymentAndSubmit = async () => {
@@ -233,8 +253,6 @@ const StaffNewApplication = () => {
     setError(null);
 
     try {
-      const applicant = await resolveApplicantId();
-
       const payPhone = paymentPhone.replace(/^\+?252/, '').replace(/\D/g, '');
       const payRes = await axios.post(`${API}/payment/waafi`, {
         phone: payPhone,
@@ -245,14 +263,46 @@ const StaffNewApplication = () => {
         throw new Error(payRes.data.message || 'Payment failed');
       }
 
-      const app = await submitApplication(applicant);
-      setCreatedAppId(app.applicationId);
-      setShowPaymentModal(false);
-      setShowSuccess(true);
+      await finishAfterPayment();
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Something went wrong';
       setPaymentError(msg);
       setError(msg);
+    } finally {
+      setIsProcessingPayment(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOfflinePaymentAndSubmit = async () => {
+    if (!/^\d{4}$/.test(offlinePin)) {
+      setPaymentError('Enter a valid 4-digit PIN');
+      return;
+    }
+
+    setIsProcessingPayment(true);
+    setPaymentError(null);
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const payPhone = paymentPhone.replace(/^\+?252/, '').replace(/\D/g, '') || undefined;
+      const payRes = await axios.post(`${API}/payment/offline`, {
+        pin: offlinePin,
+        amount: totalFee,
+        phone: payPhone,
+      }, { headers: authHeaders });
+
+      if (!payRes.data.success) {
+        throw new Error(payRes.data.message || 'Payment failed');
+      }
+
+      await finishAfterPayment();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Something went wrong';
+      setPaymentError(msg);
+      setError(msg);
+      setOfflinePin('');
     } finally {
       setIsProcessingPayment(false);
       setIsSubmitting(false);
@@ -682,47 +732,124 @@ const StaffNewApplication = () => {
       {showPaymentModal && (
         <div className="fixed inset-0 bg-navy/90 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-card-bg rounded-2xl w-full max-w-md p-10 text-center shadow-2xl border border-border-color">
-            <h2 className="text-[24px] font-bold text-navy mb-2">Payment (EVC Plus)</h2>
-            <p className="text-[13px] text-text-muted mb-6">
-              Amount to collect: <strong className="text-navy font-black">${totalFee.toFixed(2)}</strong>
-            </p>
+            {!paymentMethod ? (
+              <>
+                <h2 className="text-[24px] font-bold text-navy mb-2">Choose Payment Method</h2>
+                <p className="text-[13px] text-text-muted mb-6">
+                  Amount to collect: <strong className="text-navy font-black">${totalFee.toFixed(2)}</strong>
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setPaymentMethod('online'); setPaymentError(null); }}
+                    className="w-full bg-navy hover:brightness-110 text-white font-bold py-3.5 text-[13px] rounded-lg transition-colors shadow-lg"
+                  >
+                    Online Payment
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setPaymentMethod('offline'); setPaymentError(null); setOfflinePin(''); }}
+                    className="w-full bg-table-header-bg hover:brightness-95 text-navy font-bold py-3.5 text-[13px] rounded-lg transition-colors border border-border-color"
+                  >
+                    Offline Payment
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closePaymentModal}
+                    className="w-full text-text-muted font-bold py-2 text-[13px]"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : paymentMethod === 'offline' ? (
+              <>
+                <h2 className="text-[24px] font-bold text-navy mb-2">Enter Payment PIN</h2>
+                <p className="text-[13px] text-text-muted mb-6">
+                  Amount to collect: <strong className="text-navy font-black">${totalFee.toFixed(2)}</strong>
+                </p>
 
-            {paymentError && (
-              <div className="bg-red-50 text-red-600 p-3 mb-4 rounded-lg text-sm font-bold text-left">{paymentError}</div>
+                {paymentError && (
+                  <div className="bg-red-50 text-red-600 p-3 mb-4 rounded-lg text-sm font-bold text-left">{paymentError}</div>
+                )}
+
+                <div className="mb-6 text-left">
+                  <label className="block text-[12px] font-bold text-navy mb-2">4-Digit PIN</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={offlinePin}
+                    onChange={(e) => setOfflinePin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    autoFocus
+                    className="w-full p-3 text-[24px] tracking-[0.5em] bg-card-bg border border-border-color rounded-lg focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none font-bold text-center"
+                    placeholder="••••"
+                  />
+                </div>
+
+                <div className="flex gap-3 mt-8">
+                  <button
+                    type="button"
+                    onClick={() => { setPaymentMethod(null); setPaymentError(null); setOfflinePin(''); }}
+                    className="flex-1 bg-table-header-bg hover:brightness-95 text-text-muted font-bold py-3 text-[13px] rounded-lg transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOfflinePaymentAndSubmit}
+                    disabled={isProcessingPayment}
+                    className="flex-[2] bg-navy hover:brightness-110 text-white font-bold py-3 text-[13px] rounded-lg transition-colors shadow-lg disabled:opacity-50"
+                  >
+                    {isProcessingPayment ? 'Processing...' : 'Collect & Submit'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-[24px] font-bold text-navy mb-2">Payment (EVC Plus)</h2>
+                <p className="text-[13px] text-text-muted mb-6">
+                  Amount to collect: <strong className="text-navy font-black">${totalFee.toFixed(2)}</strong>
+                </p>
+
+                {paymentError && (
+                  <div className="bg-red-50 text-red-600 p-3 mb-4 rounded-lg text-sm font-bold text-left">{paymentError}</div>
+                )}
+
+                <div className="mb-6 text-left">
+                  <label className="block text-[12px] font-bold text-navy mb-2">Citizen EVC Plus Number</label>
+                  <div className="flex gap-2">
+                    <span className="p-3 bg-table-header-bg rounded-lg text-text-muted font-bold border border-border-color">+252</span>
+                    <input
+                      type="tel"
+                      value={paymentPhone}
+                      onChange={(e) => setPaymentPhone(e.target.value)}
+                      placeholder="61XXXXXXX"
+                      autoFocus
+                      className="w-full flex-1 p-3 text-[16px] tracking-wider bg-card-bg border border-border-color rounded-lg focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none font-bold text-center"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-8">
+                  <button
+                    type="button"
+                    onClick={() => { setPaymentMethod(null); setPaymentError(null); }}
+                    className="flex-1 bg-table-header-bg hover:brightness-95 text-text-muted font-bold py-3 text-[13px] rounded-lg transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePaymentAndSubmit}
+                    disabled={isProcessingPayment}
+                    className="flex-[2] bg-navy hover:brightness-110 text-white font-bold py-3 text-[13px] rounded-lg transition-colors shadow-lg disabled:opacity-50"
+                  >
+                    {isProcessingPayment ? 'Processing...' : 'Collect & Submit'}
+                  </button>
+                </div>
+              </>
             )}
-
-            <div className="mb-6 text-left">
-              <label className="block text-[12px] font-bold text-navy mb-2">Citizen EVC Plus Number</label>
-              <div className="flex gap-2">
-                <span className="p-3 bg-table-header-bg rounded-lg text-text-muted font-bold border border-border-color">+252</span>
-                <input
-                  type="tel"
-                  value={paymentPhone}
-                  onChange={(e) => setPaymentPhone(e.target.value)}
-                  placeholder="61XXXXXXX"
-                  autoFocus
-                  className="w-full flex-1 p-3 text-[16px] tracking-wider bg-card-bg border border-border-color rounded-lg focus:ring-2 focus:ring-navy/20 focus:border-navy outline-none font-bold text-center"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-8">
-              <button
-                type="button"
-                onClick={() => { setShowPaymentModal(false); setPaymentError(null); }}
-                className="flex-1 bg-table-header-bg hover:brightness-95 text-text-muted font-bold py-3 text-[13px] rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handlePaymentAndSubmit}
-                disabled={isProcessingPayment}
-                className="flex-[2] bg-navy hover:brightness-110 text-white font-bold py-3 text-[13px] rounded-lg transition-colors shadow-lg disabled:opacity-50"
-              >
-                {isProcessingPayment ? 'Processing...' : 'Collect & Submit'}
-              </button>
-            </div>
           </div>
         </div>
       )}

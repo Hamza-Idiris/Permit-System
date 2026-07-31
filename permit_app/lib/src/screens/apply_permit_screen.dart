@@ -7,6 +7,7 @@ import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/services/permit_service.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:permit_app/src/widgets/civic_app_bar.dart';
+import 'package:permit_app/src/widgets/payment_dialogs.dart';
 import 'package:provider/provider.dart';
 
 class ApplyPermitScreen extends StatefulWidget {
@@ -301,7 +302,56 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
     );
   }
 
-  void _showPaymentModal() {
+  Future<void> _completeApplyAfterPayment(double actualAmount) async {
+    const storage = FlutterSecureStorage();
+    final String storedName = await storage.read(key: 'fullName') ?? 'Official Member';
+    final String storedPhone = await storage.read(key: 'phone') ?? '061XXXXXXX';
+    final String storedEmail = await storage.read(key: 'email') ?? 'user@gov.so';
+
+    final selectedTypeObj = _dynamicBuildingTypes.firstWhere((b) => b['name'] == _selectedBuildingType, orElse: () => null);
+    bool isPerFloor = selectedTypeObj != null ? (selectedTypeObj['isPerFloor'] ?? false) : false;
+
+    final result = await _permitService.submitApplication(
+      fullName: storedName, phone: storedPhone, email: storedEmail,
+      plotId: _plotIdController.text, district: _selectedDistrict!,
+      requestType: _selectedRequestType,
+      buildingCategory: _selectedBuildingType!,
+      floors: isPerFloor ? _floorsController.text : '1',
+      landArea: _calculatedArea.toString(),
+      totalFee: actualAmount.toString(),
+      nationalIdBytes: _passportBytes!, nationalIdName: _passportName ?? 'id.jpg',
+      ownershipDocsBytes: _landDocBytes!, ownershipDocsName: _landDocName ?? 'land.pdf',
+    );
+
+    if (!mounted) return;
+    if (result['success']) {
+      _showSuccessAnimation();
+      _showNotification('Permit Applied!', 'Application Ref: ${_plotIdController.text}. Payment confirmed.');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']), backgroundColor: Colors.red));
+    }
+  }
+
+  Future<void> _showPaymentModal() async {
+    final method = await showPaymentMethodChoice(context, amount: _totalFee);
+    if (method == null || !mounted) return;
+
+    if (method == 'offline') {
+      final paymentResult = await showOfflinePinPayment(
+        context,
+        permitService: _permitService,
+        amount: _totalFee,
+      );
+      if (paymentResult?['success'] == true && mounted) {
+        await _completeApplyAfterPayment(_totalFee);
+      }
+      return;
+    }
+
+    _showOnlinePaymentModal();
+  }
+
+  void _showOnlinePaymentModal() {
     final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
     final TextEditingController phoneController = TextEditingController();
     final TextEditingController amountController = TextEditingController(text: _totalFee.toStringAsFixed(2));
@@ -453,35 +503,8 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                           return;
                         }
 
-                        const storage = FlutterSecureStorage();
-                        final String storedName = await storage.read(key: 'fullName') ?? 'Official Member';
-                        final String storedPhone = await storage.read(key: 'phone') ?? '061XXXXXXX';
-                        final String storedEmail = await storage.read(key: 'email') ?? 'user@gov.so';
-
-                        final selectedTypeObj = _dynamicBuildingTypes.firstWhere((b) => b['name'] == _selectedBuildingType, orElse: () => null);
-                        bool isPerFloor = selectedTypeObj != null ? (selectedTypeObj['isPerFloor'] ?? false) : false;
-
-                        // Submit Application ONLY if Payment Succeeded
-                        final result = await _permitService.submitApplication(
-                          fullName: storedName, phone: storedPhone, email: storedEmail,
-                          plotId: _plotIdController.text, district: _selectedDistrict!,
-                          requestType: _selectedRequestType,
-                          buildingCategory: _selectedBuildingType!,
-                          floors: isPerFloor ? _floorsController.text : '1',
-                          landArea: _calculatedArea.toString(),
-                          totalFee: actualAmount.toString(),
-                          nationalIdBytes: _passportBytes!, nationalIdName: _passportName ?? 'id.jpg',
-                          ownershipDocsBytes: _landDocBytes!, ownershipDocsName: _landDocName ?? 'land.pdf',
-                        );
-                        
                         if (mounted) Navigator.pop(context);
-                        if (result['success']) {
-                          _showSuccessAnimation();
-                          _showNotification('Permit Applied!', 'Application Ref: ${_plotIdController.text}. Payment confirmed.');
-                        } else {
-                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']), backgroundColor: Colors.red));
-                        }
-
+                        await _completeApplyAfterPayment(actualAmount);
                       },
                       child: const Text('AUTHORIZE PAYMENT', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
                     ),

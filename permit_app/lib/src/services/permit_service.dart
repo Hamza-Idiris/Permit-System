@@ -364,6 +364,41 @@ class PermitService {
     }
   }
 
+  Future<Map<String, dynamic>> processOfflinePayment({
+    required String pin,
+    required double amount,
+    String? phone,
+    String? applicationId,
+  }) async {
+    try {
+      final token = await _storage.read(key: 'token');
+      final bodyMap = <String, dynamic>{
+        'pin': pin,
+        'amount': amount,
+      };
+      if (phone != null && phone.isNotEmpty) bodyMap['phone'] = phone;
+      if (applicationId != null) bodyMap['applicationId'] = applicationId;
+
+      final response = await http.post(
+        Uri.parse('${Constants.apiBaseUrl}/payment/offline'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(bodyMap),
+      ).timeout(const Duration(seconds: 30));
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message'], 'data': data['data']};
+      }
+      return {'success': false, 'message': data['message'] ?? 'Payment failed'};
+    } catch (e) {
+      return {'success': false, 'message': 'An error occurred: $e'};
+    }
+  }
+
   Future<Map<String, dynamic>> getRenewTypes() async {
     try {
       final token = await _storage.read(key: 'token');
