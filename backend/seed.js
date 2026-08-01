@@ -16,7 +16,10 @@ const ADMIN = {
 
 const seedSuperAdmin = async () => {
   try {
-    const uri = process.env.MONGODB_URL || 'mongodb://localhost:27017/permit-system';
+    const uri =
+      process.env.MONGODB_URI ||
+      process.env.MONGODB_URL ||
+      'mongodb://localhost:27017/permit-system';
     await mongoose.connect(uri);
     console.log('MongoDB Connected for seeding...');
     console.log(`Database: ${uri.includes('mongodb+srv') ? 'MongoDB Atlas (cloud)' : 'Local MongoDB'}`);

@@ -2,21 +2,43 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const path = require('path');
+const fs = require('fs');
+const http = require('http');
 
 // Load env vars
 dotenv.config();
 
 const app = express();
 
-// Body parser
-app.use(express.json());
+// Behind Render/Railway proxies
+app.set('trust proxy', 1);
 
-// Enable CORS
+// Body parser
+app.use(express.json({ limit: '10mb' }));
+
+// Enable CORS (open for mobile APK clients worldwide)
 app.use(cors({
-  origin: true, // Allow any origin for development
+  origin: true,
   credentials: true,
-  exposedHeaders: ['Content-Disposition']
+  exposedHeaders: ['Content-Disposition'],
 }));
+
+// Health check for cloud platforms
+app.get('/', (_req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'Banaadir BuildPermit API',
+    env: process.env.NODE_ENV || 'development',
+  });
+});
+
+app.get('/api/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    mongo: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+  });
+});
 
 // Route files
 const authRoutes = require('./routes/authRoutes');
@@ -29,9 +51,6 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const buildingTypeRoutes = require('./routes/buildingTypeRoutes');
 const districtBranchRoutes = require('./routes/districtBranchRoutes');
 const renovationTypeRoutes = require('./routes/renovationTypeRoutes');
-const path = require('path');
-
-const fs = require('fs');
 
 // Mount routers
 app.use('/api/auth', authRoutes);
@@ -62,7 +81,6 @@ app.get('/api/stream-pdf', (req, res) => {
     }
 
     if (fs.existsSync(absolutePath)) {
-      // Serve as application/octet-stream so IDM ignores it completely
       res.setHeader('Content-Type', 'application/octet-stream');
       const fileStream = fs.createReadStream(absolutePath);
       fileStream.pipe(res);
@@ -81,19 +99,28 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
       res.set('Content-Type', 'application/pdf');
       res.set('Content-Disposition', 'inline');
     }
-  }
+  },
 }));
 
-// Error handler middleware can be added here
-
 const PORT = process.env.PORT || 5000;
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  process.env.MONGODB_URL ||
+  'mongodb://localhost:27017/permit-system';
+
+if (!process.env.JWT_SECRET) {
+  console.warn('WARNING: JWT_SECRET is not set. Set it in your environment before production use.');
+}
 
 // Connect to database and start server
 mongoose
-  .connect(process.env.MONGODB_URL || 'mongodb://localhost:27017/permit-system')
+  .connect(MONGODB_URI)
   .then(() => {
     console.log('MongoDB Connected');
-    const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    const server = http.createServer(app);
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+    });
     const { initWebSocket } = require('./services/websocketService');
     initWebSocket(server);
   })
