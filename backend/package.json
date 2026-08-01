@@ -1,7 +1,10 @@
 {
-  "name": "backend",
+  "name": "banaadir-permit-api",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon server.js",
@@ -11,7 +14,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Banaadir BuildPermit API",
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
