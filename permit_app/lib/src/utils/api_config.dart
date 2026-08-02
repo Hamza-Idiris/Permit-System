@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
+
 /// API endpoints for Banaadir BuildPermit.
 ///
 /// Switch [environment] (or pass `--dart-define=APP_ENV=local`) to use
@@ -7,7 +10,7 @@ class ApiConfig {
   /// Override: flutter run/build --dart-define=APP_ENV=local
   static const String environment = String.fromEnvironment(
     'APP_ENV',
-    defaultValue: 'production',
+    defaultValue: 'local',
   );
 
   /// Live cloud API (Render). Update if your Render service name differs.
@@ -50,11 +53,19 @@ class ApiConfig {
     if (_localHostOverride.isNotEmpty) {
       return 'http://$_localHostOverride:5000';
     }
-    // Android emulator loopback to host machine
-    return 'http://10.0.2.2:5000';
+    if (kIsWeb) {
+      return 'http://localhost:5000';
+    }
+    try {
+      if (Platform.isAndroid) {
+        return 'http://10.0.2.2:5000';
+      }
+    } catch (_) {}
+    return 'http://localhost:5000';
   }
 
   static String _stripTrailingSlash(String url) {
     return url.endsWith('/') ? url.substring(0, url.length - 1) : url;
   }
 }
+
