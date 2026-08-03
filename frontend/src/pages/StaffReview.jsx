@@ -478,21 +478,26 @@ const StaffReview = () => {
 
     return (
         <div className="flex h-screen bg-bg-soft overflow-hidden font-sans relative transition-colors duration-300">
-
-            {/* Custom Modal / Lightbox */}
+            {/* PDF/Image Lightbox Preview Panel */}
             {isPreviewOpen && (
-                <div className="ui-modal-backdrop bg-navy/50">
-                    <div className="relative w-full h-full max-w-[1200px] flex flex-col ui-modal">
+                <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 lg:p-6 transition-all duration-300">
+                    {/* Centered Preview Layout */}
+                    <div className="w-full max-w-4xl bg-card-bg flex flex-col h-[85vh] lg:h-[90vh] rounded-2xl shadow-2xl overflow-hidden transition-colors">
                         {/* Lightbox Header */}
-                        <div className="ui-modal-header bg-table-header-bg/60">
-                            <h3 className="text-text-main font-semibold text-sm">Document Preview</h3>
-                            <div className="flex items-center gap-3">
+                        <div className="p-4 border-b border-border-color flex items-center justify-between shrink-0 bg-card-bg transition-colors">
+                            <div>
+                                <h4 className="font-bold text-navy text-[13px] uppercase tracking-wider">Document Preview</h4>
+                                <span className="text-[10px] text-text-muted mt-0.5 block truncate max-w-[200px]">
+                                    Reviewing attachment files
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
                                 {previewUrl && (
                                     <a
                                         href={previewUrl}
                                         download
                                         target="_blank"
-                                        rel="noopener noreferrer"
+                                        rel="noreferrer"
                                         className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3.5 py-2 rounded-[10px] text-xs font-semibold transition-colors"
                                     >
                                         <Download size={16} strokeWidth={3} /> Download
@@ -810,16 +815,6 @@ const StaffReview = () => {
                                         </div>
                                     )}
                                 </div>
-                            </section>
-
-                            <section className="bg-amber-500/10 rounded-[14px] p-6 relative overflow-hidden flex flex-col justify-center min-h-[160px] border border-amber-500/20">
-                                <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: darkMode ? 'radial-gradient(#4f8ef7 1px, transparent 1px)' : 'radial-gradient(#d1a44e 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-                                <div className="absolute right-10 top-1/2 -translate-y-1/2 w-16 h-16 bg-rose-500 rounded-full flex items-center justify-center shadow-lg transform -translate-y-2 transition-transform">
-                                    <div className="w-4 h-4 bg-white rounded-full"></div>
-                                    <div className="absolute bottom-[-10px] w-0 h-0 border-l-[10px] border-r-[10px] border-t-[15px] border-l-transparent border-r-transparent border-t-rose-500"></div>
-                                </div>
-                                <h3 className="font-semibold text-amber-500 text-[14px] z-10 mb-1">Plot Location</h3>
-                                <p className="text-[11px] text-amber-500/70 font-semibold z-10 uppercase tracking-[0.08em]">Map Overlay (Preview)</p>
                             </section>
                         </div>
 

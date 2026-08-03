@@ -365,7 +365,7 @@ const StaffNewApplication = () => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* 1. Applicant */}
-              <section className="bg-card-bg rounded-2xl border border-border-color shadow-sm overflow-hidden">
+              <section className="bg-card-bg rounded-2xl border border-border-color shadow-sm">
                 <div className="bg-table-header-bg border-b border-border-color px-6 py-4 flex items-center gap-3">
                   <User size={18} className="text-navy" />
                   <h2 className="font-bold text-[14px] text-navy tracking-wide">1. Applicant</h2>

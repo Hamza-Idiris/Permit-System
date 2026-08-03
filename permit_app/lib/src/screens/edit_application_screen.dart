@@ -56,6 +56,14 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
   bool _isLoadingDistricts = true;
   String? _errorMessage;
 
+  List<dynamic> _discounts = [];
+  String? _initialPlotSize;
+  String? _initialBuildingType;
+  String? _initialFloors;
+  String? _initialWidth;
+  String? _initialLength;
+  double _initialTotalFee = 0;
+
   @override
   void initState() {
     super.initState();
@@ -81,6 +89,15 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
     final floors = formData['floors']?.toString() ?? '1';
     _floorsController.text = floors;
 
+    _initialTotalFee = double.tryParse(formData['totalFee']?.toString() ?? '0') ?? 0;
+    _totalFee = _initialTotalFee;
+
+    _initialPlotSize = _selectedPlotSize;
+    _initialBuildingType = formData['buildingCategory']?.toString();
+    _initialFloors = floors;
+    _initialWidth = _customWidthController.text;
+    _initialLength = _customLengthController.text;
+
     _calculateFee();
     _customWidthController.addListener(_calculateFee);
     _customLengthController.addListener(_calculateFee);
@@ -94,8 +111,12 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
   Future<void> _fetchBuildingTypes() async {
     try {
       final result = await _permitService.getBuildingTypes();
+      final resultDisc = await _permitService.getDiscounts();
       if (result['success'] && mounted) {
         setState(() {
+          if (resultDisc['success']) {
+            _discounts = resultDisc['data'] as List<dynamic>? ?? [];
+          }
           _dynamicBuildingTypes = result['data'];
           _buildingTypes = _dynamicBuildingTypes.map((b) => b['name'].toString()).toList();
           _isLoadingBuildingTypes = false;
@@ -146,6 +167,25 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
 
   double _totalFee = 0;
   void _calculateFee() {
+    final currentFloors = _floorsController.text;
+    final currentWidth = _customWidthController.text;
+    final currentLength = _customLengthController.text;
+
+    // If nothing relevant has changed from the initial loaded state,
+    // preserve the exact original fee that was paid.
+    if (_selectedPlotSize == _initialPlotSize &&
+        _selectedBuildingType == _initialBuildingType &&
+        currentFloors == _initialFloors &&
+        currentWidth == _initialWidth &&
+        currentLength == _initialLength) {
+      if (mounted) {
+        setState(() {
+          _totalFee = _initialTotalFee;
+        });
+      }
+      return;
+    }
+
     double area = _calculatedArea;
     double fee = 0;
     int floors = int.tryParse(_floorsController.text) ?? 1;
@@ -164,6 +204,32 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
         fee = area * multiplier * floors;
       } else {
         fee = area * multiplier;
+      }
+
+      // Apply active discount: type-specific first, else category-wide
+      double discountPct = 0;
+      final typeName = _selectedBuildingType ?? '';
+      final requestType = widget.permit['formData']?['requestType']?.toString() ?? 'New Construction';
+      for (final d in _discounts) {
+        if (d['isActive'] == false) continue;
+        if (d['scope'] == 'type' &&
+            (d['typeName']?.toString().toLowerCase() == typeName.toLowerCase()) &&
+            ((d['requestType'] == null || d['requestType'] == '' || d['requestType'] == requestType))) {
+          discountPct = (d['discountPercent'] ?? 0).toDouble();
+          break;
+        }
+      }
+      if (discountPct == 0) {
+        for (final d in _discounts) {
+          if (d['isActive'] == false) continue;
+          if (d['scope'] == 'category' && d['requestType'] == requestType) {
+            discountPct = (d['discountPercent'] ?? 0).toDouble();
+            break;
+          }
+        }
+      }
+      if (discountPct > 0) {
+        fee = fee * (1 - discountPct / 100);
       }
     }
 

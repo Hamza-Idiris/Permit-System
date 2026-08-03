@@ -8,8 +8,7 @@ import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/screens/edit_application_screen.dart';
 import 'package:permit_app/src/widgets/civic_app_bar.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:permit_app/src/utils/file_saver.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class PermitDetailScreen extends StatefulWidget {
@@ -152,35 +151,11 @@ class _PermitDetailScreenState extends State<PermitDetailScreen> {
       final String fileName =
           'permit_certificate_${widget.permit['permitId'] ?? widget.permit['_id'] ?? 'approved'}.png';
 
-      // Avoid FilePicker.saveFile on Android (returns broken /document/N paths).
-      // Write to a temp file, then open the system share sheet so the user can Save/Download.
-      final Directory dir = await getTemporaryDirectory();
-      final File outFile = File('${dir.path}/$fileName');
-      await outFile.writeAsBytes(pngBytes, flush: true);
-
-      final result = await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(outFile.path, mimeType: 'image/png', name: fileName)],
-          subject: 'Permit Certificate',
-          text: 'Official building permit certificate',
-        ),
+      await saveAndShareFile(
+        bytes: pngBytes,
+        fileName: fileName,
+        context: context,
       );
-
-      if (context.mounted && result.status == ShareResultStatus.success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Permit Certificate shared successfully!'),
-            backgroundColor: ColorPallete.successGreen,
-          ),
-        );
-      } else if (context.mounted && result.status == ShareResultStatus.dismissed) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Certificate ready — choose Save/Downloads in the share sheet.'),
-            backgroundColor: ColorPallete.primaryNavy,
-          ),
-        );
-      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
