@@ -11,7 +11,6 @@ import {
   CheckCircle,
   MapPin,
   Building2,
-  GitBranch,
   X,
   Layers,
   QrCode,
@@ -26,7 +25,6 @@ const ADMIN_NAV = [
   { icon: LayoutDashboard, label: 'Dashboard', to: '/admin/dashboard' },
   { icon: Briefcase, label: 'Staff Management', to: '/admin/staff' },
   { icon: MapPin, label: 'District Management', to: '/admin/districts' },
-  { icon: GitBranch, label: 'District Branches', to: '/admin/district-branches' },
   { icon: Layers, label: 'Permit Types', to: '/admin/permit-types' },
   { icon: ClipboardList, label: 'Applicant Management', to: '/admin/applicants' },
   { icon: Shield, label: 'Inspector Management', to: '/admin/inspectors' },
@@ -100,11 +98,10 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
       >
         <button
           onClick={() => setIsMobileMenuOpen(false)}
-          className={`absolute top-4 right-4 lg:hidden p-1.5 rounded-lg transition-all ${
-            darkMode
+          className={`absolute top-4 right-4 lg:hidden p-1.5 rounded-lg transition-all ${darkMode
               ? 'text-white/40 hover:text-white hover:bg-white/5'
               : 'text-gray-400 hover:text-navy hover:bg-gray-100'
-          }`}
+            }`}
         >
           <X size={18} />
         </button>
@@ -138,12 +135,11 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
               to={to}
               onClick={() => setIsMobileMenuOpen?.(false)}
               className={({ isActive }) =>
-                `flex items-center justify-between px-4 py-2.5 rounded-xl text-[13px] font-bold transition-all no-underline group ${
-                  isActive
-                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-                    : darkMode
-                      ? 'text-white/45 hover:text-white hover:bg-white/6'
-                      : 'text-gray-500 hover:text-navy hover:bg-gray-100'
+                `flex items-center justify-between px-4 py-2.5 rounded-xl text-[13px] font-bold transition-all no-underline group ${isActive
+                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
+                  : darkMode
+                    ? 'text-white/45 hover:text-white hover:bg-white/6'
+                    : 'text-gray-500 hover:text-navy hover:bg-gray-100'
                 }`
               }
             >
@@ -162,11 +158,10 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
 
         <div className={`px-3 pb-6 pt-4 border-t space-y-1 ${darkMode ? 'border-white/5' : 'border-gray-100'}`}>
           <div className="flex items-center gap-3 px-4 py-3 mb-1">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-black shrink-0 ${
-              darkMode
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-black shrink-0 ${darkMode
                 ? 'bg-white/10 border border-white/10 text-white'
                 : 'bg-navy/5 border border-navy/10 text-navy'
-            }`}>
+              }`}>
               {user?.fullName?.[0]?.toUpperCase() || 'U'}
             </div>
             <div className="overflow-hidden">

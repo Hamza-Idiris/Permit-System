@@ -102,10 +102,15 @@ const PermitTypesManagement = () => {
 
   const submitType = async (e) => {
     e.preventDefault();
+    const multiplier = Number(typeForm.feeMultiplier);
+    if (multiplier < 0) {
+      alert('Fee Multiplier must be a positive value.');
+      return;
+    }
     try {
       const payload = {
         name: typeForm.name,
-        feeMultiplier: Number(typeForm.feeMultiplier),
+        feeMultiplier: multiplier,
         isPerFloor: typeForm.isPerFloor,
       };
       if (editingType) {
@@ -246,22 +251,20 @@ const PermitTypesManagement = () => {
                 <button
                   key={id}
                   onClick={() => { setActiveTab(id); setSearchTerm(''); }}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-black transition-all ${
-                    activeTab === id
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-black transition-all ${activeTab === id
                       ? 'bg-navy text-white shadow-md shadow-navy/20'
                       : 'text-text-muted hover:text-navy hover:bg-table-header-bg'
-                  }`}
+                    }`}
                 >
                   <Icon size={15} /> {label}
                 </button>
               ))}
               <button
                 onClick={() => { setActiveTab('discounts'); setSearchTerm(''); }}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-black transition-all ${
-                  isDiscounts
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-black transition-all ${isDiscounts
                     ? 'bg-navy text-white shadow-md shadow-navy/20'
                     : 'text-text-muted hover:text-navy hover:bg-table-header-bg'
-                }`}
+                  }`}
               >
                 <Percent size={15} /> Discounts
               </button>
@@ -491,6 +494,7 @@ const PermitTypesManagement = () => {
                   <input
                     type="number"
                     step="0.01"
+                    min="0"
                     required
                     value={typeForm.feeMultiplier}
                     onChange={(e) => setTypeForm({ ...typeForm, feeMultiplier: e.target.value })}
