@@ -601,7 +601,7 @@ const StaffReview = () => {
                                 <h4 className="font-semibold text-amber-500 text-[14px] mb-1">This application was corrected and resubmitted</h4>
                                 <p className="text-[13px] text-text-muted font-medium leading-relaxed">
                                     This application was previously returned by staff and has now been corrected by the applicant.
-                                    <strong> Permit fee (${application.formData.totalFee.toFixed(2)}) has already been paid (ALREADY PAID)</strong>. The applicant was not charged a second time.
+                                    <strong> Permit fee (${application.formData.totalFee.toFixed(2)}) has been paid</strong>. The applicant was charged a new fee for this resubmission.
                                 </p>
                             </div>
                         </div>

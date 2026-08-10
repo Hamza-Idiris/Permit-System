@@ -37,6 +37,10 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
     'Heliwa', 'Kaxda', 'Daru-Salam'
   ];
 
+  String _selectedRequestType = 'New Construction';
+  List<dynamic> _allNewConstructionTypes = [];
+  List<dynamic> _allRenovationTypes = [];
+
   List<dynamic> _dynamicBuildingTypes = [];
   bool _isLoadingBuildingTypes = true;
 
@@ -71,6 +75,7 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
 
     _plotIdController = TextEditingController(text: formData['plotId']?.toString() ?? '');
     _selectedDistrict = formData['district']?.toString();
+    _selectedRequestType = formData['requestType']?.toString() ?? 'New Construction';
 
     // Map landArea back to plot size option
     final landArea = double.tryParse(formData['landArea']?.toString() ?? '0') ?? 0;
@@ -108,16 +113,44 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
     _fetchBuildingTypes();
   }
 
+  void _updateBuildingTypesList() {
+    setState(() {
+      if (_selectedRequestType == 'New Construction') {
+        _dynamicBuildingTypes = _allNewConstructionTypes;
+      } else {
+        _dynamicBuildingTypes = _allRenovationTypes;
+      }
+      _buildingTypes = _dynamicBuildingTypes.map((b) => b['name'].toString()).toList();
+      
+      if (_selectedBuildingType != null && !_buildingTypes.contains(_selectedBuildingType)) {
+        _selectedBuildingType = null;
+      }
+      _calculateFee();
+    });
+  }
+
   Future<void> _fetchBuildingTypes() async {
     try {
-      final result = await _permitService.getBuildingTypes();
+      final resultNew = await _permitService.getBuildingTypes();
+      final resultReno = await _permitService.getRenovationTypes();
       final resultDisc = await _permitService.getDiscounts();
-      if (result['success'] && mounted) {
+      if (mounted) {
         setState(() {
           if (resultDisc['success']) {
             _discounts = resultDisc['data'] as List<dynamic>? ?? [];
           }
-          _dynamicBuildingTypes = result['data'];
+          if (resultNew['success']) {
+            _allNewConstructionTypes = resultNew['data'];
+          }
+          if (resultReno['success']) {
+            _allRenovationTypes = resultReno['data'];
+          }
+
+          if (_selectedRequestType == 'New Construction') {
+            _dynamicBuildingTypes = _allNewConstructionTypes;
+          } else {
+            _dynamicBuildingTypes = _allRenovationTypes;
+          }
           _buildingTypes = _dynamicBuildingTypes.map((b) => b['name'].toString()).toList();
           _isLoadingBuildingTypes = false;
 
@@ -126,11 +159,9 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
           if (_buildingTypes.contains(category)) {
             _selectedBuildingType = category;
             _calculateFee();
+          } else {
+            _selectedBuildingType = null;
           }
-        });
-      } else if (mounted) {
-        setState(() {
-          _isLoadingBuildingTypes = false;
         });
       }
     } catch (e) {
@@ -209,7 +240,7 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
       // Apply active discount: type-specific first, else category-wide
       double discountPct = 0;
       final typeName = _selectedBuildingType ?? '';
-      final requestType = widget.permit['formData']?['requestType']?.toString() ?? 'New Construction';
+      final requestType = _selectedRequestType;
       for (final d in _discounts) {
         if (d['isActive'] == false) continue;
         if (d['scope'] == 'type' &&
@@ -628,7 +659,7 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
       email: formData['email']?.toString() ?? '',
       plotId: _plotIdController.text,
       district: _selectedDistrict!,
-      requestType: formData['requestType']?.toString() ?? 'New Construction',
+      requestType: _selectedRequestType,
       buildingCategory: _selectedBuildingType!,
       floors: isPerFloor ? _floorsController.text : '1',
       landArea: _calculatedArea.toString(),
@@ -785,6 +816,8 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
             const SizedBox(height: 15),
             _buildDropdown('District', _isLoadingDistricts ? ['Loading...'] : _districts, _selectedDistrict, (val) => setState(() { _selectedDistrict = val; _calculateFee(); })),
             const SizedBox(height: 15),
+            _buildDropdown('Request Type', ['New Construction', 'Renovation'], _selectedRequestType, (val) => setState(() { _selectedRequestType = val!; _updateBuildingTypesList(); })),
+            const SizedBox(height: 15),
             _buildDropdown('Plot Size', _plotSizes, _selectedPlotSize, (val) => setState(() { _selectedPlotSize = val; _calculateFee(); })),
 
             if (_selectedPlotSize == 'Custom') ...[
@@ -797,7 +830,7 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
             ],
 
             const SizedBox(height: 15),
-            _buildDropdown('Building Type', _isLoadingBuildingTypes ? ['Loading...'] : _buildingTypes, _selectedBuildingType,
+            _buildDropdown(_selectedRequestType == 'Renovation' ? 'Renovation Type' : 'Building Type', _isLoadingBuildingTypes ? ['Loading...'] : _buildingTypes, _selectedBuildingType,
                 (val) => setState(() { _selectedBuildingType = val; _calculateFee(); })),
 
             ...() {
