@@ -14,7 +14,6 @@ import StaffNewApplication from './pages/StaffNewApplication';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import UserManagement from './pages/UserManagement';
 import DistrictManagement from './pages/DistrictManagement';
-import DistrictBranchesManagement from './pages/DistrictBranchesManagement';
 import PermitTypesManagement from './pages/PermitTypesManagement';
 import NotificationsHub from './pages/NotificationsHub';
 import AllApplications from './pages/AllApplications';
@@ -89,11 +88,6 @@ function App() {
               <Route path="/admin/districts" element={
                 <ProtectedRoute allowedRoles={['superadmin']}>
                   <DistrictManagement />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/district-branches" element={
-                <ProtectedRoute allowedRoles={['superadmin']}>
-                  <DistrictBranchesManagement />
                 </ProtectedRoute>
               } />
               <Route path="/admin/permit-types" element={

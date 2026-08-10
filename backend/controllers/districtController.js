@@ -86,6 +86,12 @@ const deleteDistrict = async (req, res) => {
             return res.status(404).json({ success: false, message: 'District not found' });
         }
 
+        // Free all staff/users assigned to this district so they no longer appear as hired
+        await User.updateMany(
+            { district: district.name },
+            { $set: { district: '' } }
+        );
+
         await district.deleteOne();
 
         res.status(200).json({ success: true, data: {} });
