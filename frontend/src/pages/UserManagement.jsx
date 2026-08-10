@@ -6,7 +6,7 @@ import Sidebar from '../components/Sidebar';
 import {
   Search, Filter, ChevronDown, UserPlus, MapPin, MoreVertical,
   CheckCircle2, AlertCircle, Edit3, Trash2, Eye, EyeOff,
-  Settings2, X, Info, Power, Ban, KeyRound
+  Settings2, X, Info, Power, Ban
 } from 'lucide-react';
 import ConfigDrawer from '../components/ConfigDrawer';
 import LoadingScreen from '../components/LoadingScreen';
@@ -70,6 +70,7 @@ const UserManagement = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [toggleStatusTarget, setToggleStatusTarget] = useState(null);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -163,6 +164,8 @@ const UserManagement = () => {
       fetchData();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update account status');
+    } finally {
+      setToggleStatusTarget(null);
     }
   };
 
@@ -410,7 +413,7 @@ const UserManagement = () => {
                               <td className="py-6 text-right">
                                 <div className="flex justify-end gap-2">
                                   <button
-                                    onClick={() => handleToggleStatus(u)}
+                                    onClick={() => setToggleStatusTarget(u)}
                                     className={`p-2 rounded-xl transition-colors ${isActive
                                       ? 'text-text-muted hover:text-rose-500 hover:bg-rose-50'
                                       : 'text-text-muted hover:text-emerald-500 hover:bg-emerald-50'
@@ -418,13 +421,6 @@ const UserManagement = () => {
                                     title={isActive ? 'Deactivate account' : 'Activate account'}
                                   >
                                     {isActive ? <Ban size={15} /> : <Power size={15} />}
-                                  </button>
-                                  <button
-                                    onClick={() => handleResetPassword(u)}
-                                    className="p-2 text-text-muted hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-colors"
-                                    title="Reset password"
-                                  >
-                                    <KeyRound size={15} />
                                   </button>
                                   <button
                                     onClick={() => {
@@ -525,29 +521,24 @@ const UserManagement = () => {
                   {/* Password */}
                   <div className="space-y-2 relative">
                     <label className="text-[11px] font-black text-text-muted uppercase tracking-widest pl-1">
-                      {editingUser ? 'Password Protection' : 'Temporary Password'}
+                      {editingUser ? 'New Password (Optional)' : 'Temporary Password'}
                     </label>
                     <div className="relative">
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required={!editingUser}
-                        readOnly={!!editingUser}
-                        placeholder={editingUser ? "••••••••" : "Temporary password"}
-                        className={`w-full rounded-xl px-5 py-3.5 text-[14px] font-semibold pr-12 outline-none border border-transparent transition-all ${editingUser ? 'bg-table-header-bg text-text-muted cursor-not-allowed border-border-color' : 'bg-table-header-bg text-navy'}`}
+                        placeholder={editingUser ? "Leave blank to keep current" : "Temporary password"}
+                        className="w-full bg-table-header-bg text-navy rounded-xl px-5 py-3.5 text-[14px] font-semibold pr-12 outline-none border border-transparent transition-all"
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       />
-                      {!editingUser && (
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                      )}
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
                     </div>
-                    {!editingUser && (
-                      <p className="text-[10px] text-gray-400 font-bold leading-tight mt-1 px-1">
-                        8+ chars, Upper, Lower, Num & Special Char
-                      </p>
-                    )}
+                    <p className="text-[10px] text-gray-400 font-bold leading-tight mt-1 px-1">
+                      8+ chars, Upper, Lower, Num & Special Char
+                    </p>
                   </div>
                   {/* Gender */}
                   <div className="space-y-2">
@@ -576,6 +567,54 @@ const UserManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Toggle Status Confirm */}
+      {toggleStatusTarget && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-navy/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-card-bg rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-600 animate-in zoom-in-95 duration-300">
+            <div className="p-8">
+              <div className="flex items-center gap-4 mb-6">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${toggleStatusTarget.isActive !== false
+                    ? 'bg-rose-500/10 text-rose-500'
+                    : 'bg-emerald-500/10 text-emerald-500'
+                  }`}>
+                  {toggleStatusTarget.isActive !== false
+                    ? <Ban size={24} />
+                    : <Power size={24} />}
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-navy tracking-tight">
+                    {toggleStatusTarget.isActive !== false ? 'Deactivate Account' : 'Activate Account'}
+                  </h3>
+                  <p className="text-[13px] text-text-muted font-bold mt-0.5">{toggleStatusTarget.fullName}</p>
+                </div>
+              </div>
+              <p className="text-[14px] text-text-muted font-bold leading-relaxed">
+                {toggleStatusTarget.isActive !== false
+                  ? 'Are you sure you want to deactivate this account? The user will lose access immediately.'
+                  : 'Are you sure you want to activate this account? The user will regain full access.'}
+              </p>
+            </div>
+            <div className="px-8 py-6 border-t border-border-color flex justify-end gap-3 bg-navy/5">
+              <button
+                onClick={() => setToggleStatusTarget(null)}
+                className="px-6 py-2.5 text-[13px] font-black text-text-muted hover:text-navy transition-colors uppercase tracking-widest"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleToggleStatus(toggleStatusTarget)}
+                className={`px-8 py-2.5 text-white text-[13px] font-black rounded-xl shadow-lg transition-all active:scale-95 uppercase tracking-widest ${toggleStatusTarget.isActive !== false
+                    ? 'bg-rose-500 hover:brightness-110 shadow-rose-500/20'
+                    : 'bg-emerald-500 hover:brightness-110 shadow-emerald-500/20'
+                  }`}
+              >
+                {toggleStatusTarget.isActive !== false ? 'Yes, Deactivate' : 'Yes, Activate'}
+              </button>
+            </div>
           </div>
         </div>
       )}

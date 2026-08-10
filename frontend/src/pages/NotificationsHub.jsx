@@ -62,7 +62,6 @@ const ADMIN_AUDIENCE = [
   { value: 'staff', label: 'Staff' },
   { value: 'inspector', label: 'Inspectors' },
   { value: 'applicant', label: 'Applicants' },
-  { value: 'district', label: 'District Applicants' },
 ];
 
 const NotificationsHub = () => {
@@ -92,8 +91,11 @@ const NotificationsHub = () => {
   const [audience, setAudience] = useState(isAdmin ? 'all' : 'admin');
   const [district, setDistrict] = useState('');
   const [adminId, setAdminId] = useState('');
+  const [targetScope, setTargetScope] = useState('all');
+  const [targetUserId, setTargetUserId] = useState('');
   const [districts, setDistricts] = useState([]);
   const [admins, setAdmins] = useState([]);
+  const [usersList, setUsersList] = useState([]);
   const [sending, setSending] = useState(false);
   const [banner, setBanner] = useState(null);
 
@@ -133,6 +135,12 @@ const NotificationsHub = () => {
         const distRes = await axios.get(`${BASE}/districts`, { headers: authHeaders });
         if (distRes.data.success) setDistricts(distRes.data.data || []);
       } catch (_) { /* silent */ }
+      if (isAdmin) {
+        try {
+          const usersRes = await axios.get(`${BASE}/users`, { headers: authHeaders });
+          if (usersRes.data.success) setUsersList(usersRes.data.data || []);
+        } catch (_) { /* silent */ }
+      }
       if (isStaff) {
         try {
           const admRes = await axios.get(`${BASE}/users/admins`, { headers: authHeaders });
@@ -141,7 +149,7 @@ const NotificationsHub = () => {
       }
     };
     load();
-  }, [segment, isStaff]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [segment, isStaff, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = async () => {
     if (loadingMore || !hasMore) return;
@@ -242,19 +250,21 @@ const NotificationsHub = () => {
         }
         body = { message: trimmed, target: 'admin', adminId };
       } else {
-        if (!district) {
-          setBanner({ type: 'error', text: 'Please select a district.' });
-          return;
-        }
-        body = { message: trimmed, target: 'district', district };
+        body = { message: trimmed, target: 'district' };
       }
     } else {
-      if (audience === 'district') {
+      if (audience !== 'all' && targetScope === 'district') {
         if (!district) {
           setBanner({ type: 'error', text: 'Please select a district.' });
           return;
         }
-        body = { message: trimmed, target: 'district', district, role: 'applicant' };
+        body = { message: trimmed, target: 'district', district, role: audience };
+      } else if (audience !== 'all' && targetScope === 'specific') {
+        if (!targetUserId) {
+          setBanner({ type: 'error', text: 'Please select a user.' });
+          return;
+        }
+        body = { message: trimmed, userIds: [targetUserId] };
       } else {
         body = { message: trimmed, role: audience };
       }
@@ -347,21 +357,19 @@ const NotificationsHub = () => {
             <div className="flex items-center gap-1.5 p-1.5 bg-card-bg border border-border-color rounded-2xl shadow-sm">
               <button
                 onClick={() => setSegment('inbox')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-black transition-all ${
-                  segment === 'inbox'
-                    ? 'bg-navy text-white shadow-md shadow-navy/20'
-                    : 'text-text-muted hover:text-navy'
-                }`}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-black transition-all ${segment === 'inbox'
+                  ? 'bg-navy text-white shadow-md shadow-navy/20'
+                  : 'text-text-muted hover:text-navy'
+                  }`}
               >
                 <Inbox size={15} /> Inbox
               </button>
               <button
                 onClick={() => { setSegment('compose'); setBanner(null); }}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-black transition-all ${
-                  segment === 'compose'
-                    ? 'bg-navy text-white shadow-md shadow-navy/20'
-                    : 'text-text-muted hover:text-navy'
-                }`}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-black transition-all ${segment === 'compose'
+                  ? 'bg-navy text-white shadow-md shadow-navy/20'
+                  : 'text-text-muted hover:text-navy'
+                  }`}
               >
                 <Megaphone size={15} /> Compose
               </button>
@@ -373,11 +381,10 @@ const NotificationsHub = () => {
               <div className="flex gap-3 mb-8 flex-wrap justify-end">
                 <button
                   onClick={() => setShowArchived(!showArchived)}
-                  className={`flex items-center gap-2 border rounded-xl px-5 py-2.5 text-[13px] font-bold transition-all ${
-                    showArchived
-                      ? 'bg-navy text-white border-navy shadow-lg shadow-navy/20'
-                      : 'bg-card-bg border-border-color text-text-muted hover:text-navy'
-                  }`}
+                  className={`flex items-center gap-2 border rounded-xl px-5 py-2.5 text-[13px] font-bold transition-all ${showArchived
+                    ? 'bg-navy text-white border-navy shadow-lg shadow-navy/20'
+                    : 'bg-card-bg border-border-color text-text-muted hover:text-navy'
+                    }`}
                 >
                   {showArchived ? <Bell size={15} /> : <History size={15} />}
                   {showArchived ? 'Return to Center' : 'View Archive'}
@@ -442,9 +449,8 @@ const NotificationsHub = () => {
                           <div
                             key={notif._id}
                             onClick={() => markAsRead(notif)}
-                            className={`group flex items-center gap-5 p-6 transition-all duration-300 cursor-pointer border-l-4 ${
-                              notif.isRead ? 'border-transparent opacity-70 grayscale-[0.3]' : 'border-navy bg-navy/[0.02]'
-                            } hover:bg-table-header-bg/40`}
+                            className={`group flex items-center gap-5 p-6 transition-all duration-300 cursor-pointer border-l-4 ${notif.isRead ? 'border-transparent opacity-70 grayscale-[0.3]' : 'border-navy bg-navy/[0.02]'
+                              } hover:bg-table-header-bg/40`}
                           >
                             <div className={`w-12 h-12 rounded-[18px] flex items-center justify-center shrink-0 border ${bg} ${color} ${border} shadow-sm`}>
                               <Icon size={20} />
@@ -531,11 +537,10 @@ const NotificationsHub = () => {
             <div className="max-w-2xl mx-auto space-y-6">
               {banner && (
                 <div
-                  className={`flex items-start gap-3 rounded-2xl border px-5 py-4 ${
-                    banner.type === 'success'
-                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700'
-                      : 'bg-rose-500/10 border-rose-500/20 text-rose-600'
-                  }`}
+                  className={`flex items-start gap-3 rounded-2xl border px-5 py-4 ${banner.type === 'success'
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700'
+                    : 'bg-rose-500/10 border-rose-500/20 text-rose-600'
+                    }`}
                 >
                   {banner.type === 'success'
                     ? <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
@@ -571,7 +576,7 @@ const NotificationsHub = () => {
                       </label>
                       <select
                         value={audience}
-                        onChange={(e) => { setAudience(e.target.value); setDistrict(''); }}
+                        onChange={(e) => { setAudience(e.target.value); setTargetScope('all'); setDistrict(''); setTargetUserId(''); }}
                         className="w-full bg-bg-soft border border-border-color rounded-xl px-4 py-3 text-sm font-bold text-navy outline-none focus:ring-2 focus:ring-navy/20"
                       >
                         {ADMIN_AUDIENCE.map((opt) => (
@@ -579,7 +584,25 @@ const NotificationsHub = () => {
                         ))}
                       </select>
                     </div>
-                    {audience === 'district' && (
+
+                    {audience !== 'all' && (
+                      <div>
+                        <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">
+                          Target Scope
+                        </label>
+                        <select
+                          value={targetScope}
+                          onChange={(e) => { setTargetScope(e.target.value); setDistrict(''); setTargetUserId(''); }}
+                          className="w-full bg-bg-soft border border-border-color rounded-xl px-4 py-3 text-sm font-bold text-navy outline-none focus:ring-2 focus:ring-navy/20"
+                        >
+                          <option value="all">All {ADMIN_AUDIENCE.find(a => a.value === audience)?.label}</option>
+                          <option value="district">By District</option>
+                          <option value="specific">Specific User</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {audience !== 'all' && targetScope === 'district' && (
                       <div>
                         <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">
                           District
@@ -592,6 +615,23 @@ const NotificationsHub = () => {
                           <option value="">Select district…</option>
                           {districts.map((d) => (
                             <option key={d._id} value={d.name}>{d.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {audience !== 'all' && targetScope === 'specific' && (
+                      <div>
+                        <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">
+                          Specific User
+                        </label>
+                        <select
+                          value={targetUserId}
+                          onChange={(e) => setTargetUserId(e.target.value)}
+                          className="w-full bg-bg-soft border border-border-color rounded-xl px-4 py-3 text-sm font-bold text-navy outline-none focus:ring-2 focus:ring-navy/20"
+                        >
+                          <option value="">Select a user…</option>
+                          {usersList.filter(u => u.role === audience).map((u) => (
+                            <option key={u._id} value={u._id}>{u.fullName} ({u.role})</option>
                           ))}
                         </select>
                       </div>
@@ -611,7 +651,7 @@ const NotificationsHub = () => {
                         className="w-full bg-bg-soft border border-border-color rounded-xl px-4 py-3 text-sm font-bold text-navy outline-none focus:ring-2 focus:ring-navy/20"
                       >
                         <option value="admin">Select Admin</option>
-                        <option value="district">District Applicants</option>
+                        <option value="district">My District Applicants</option>
                       </select>
                     </div>
                     {audience === 'admin' && (
@@ -633,23 +673,6 @@ const NotificationsHub = () => {
                         </select>
                       </div>
                     )}
-                    {audience === 'district' && (
-                      <div>
-                        <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">
-                          District
-                        </label>
-                        <select
-                          value={district}
-                          onChange={(e) => setDistrict(e.target.value)}
-                          className="w-full bg-bg-soft border border-border-color rounded-xl px-4 py-3 text-sm font-bold text-navy outline-none focus:ring-2 focus:ring-navy/20"
-                        >
-                          <option value="">Select district…</option>
-                          {districts.map((d) => (
-                            <option key={d._id} value={d.name}>{d.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
                   </>
                 )}
 
@@ -666,6 +689,7 @@ const NotificationsHub = () => {
                   />
                 </div>
 
+
                 <button
                   type="submit"
                   disabled={sending || !message.trim()}
@@ -678,8 +702,8 @@ const NotificationsHub = () => {
             </div>
           )}
         </div>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 };
 

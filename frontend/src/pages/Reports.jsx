@@ -6,7 +6,7 @@ import TopHeader from '../components/TopHeader';
 import LoadingScreen from '../components/LoadingScreen';
 import {
   FileText, DollarSign, Download, Search, MapPin, Layers, Users,
-  TrendingUp, TrendingDown, Building2, Trophy
+  TrendingUp, TrendingDown, Building2, Trophy, UserCheck, UserX, Activity
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie
@@ -109,7 +109,7 @@ const Reports = () => {
       .then((res) => {
         if (res.data.success) setDistricts(res.data.data || []);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [isAdmin, token]);
 
   const apiSection = activeTab === 'users' ? 'users' : 'applications';
@@ -259,6 +259,7 @@ const Reports = () => {
       { id: 'requestType', label: 'By Request Type', icon: Building2 },
       { id: 'revenue', label: 'Revenue', icon: DollarSign },
       { id: 'applicants', label: 'Top Applicants', icon: Trophy },
+      { id: 'applicantsReport', label: 'Applicants Report', icon: Users },
     ];
     if (isAdmin) base.push({ id: 'users', label: 'Users', icon: Users });
     return base;
@@ -319,11 +320,10 @@ const Reports = () => {
                     key={opt.value}
                     type="button"
                     onClick={() => setRange(opt.value)}
-                    className={`px-3.5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all ${
-                      range === opt.value
-                        ? 'bg-navy text-white shadow-md shadow-navy/20'
-                        : 'bg-table-header-bg text-text-muted hover:text-navy'
-                    }`}
+                    className={`px-3.5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all ${range === opt.value
+                      ? 'bg-navy text-white shadow-md shadow-navy/20'
+                      : 'bg-table-header-bg text-text-muted hover:text-navy'
+                      }`}
                   >
                     {opt.label}
                   </button>
@@ -483,17 +483,16 @@ const Reports = () => {
             </div>
 
             {/* Tabs */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar" style={{ scrollbarWidth: 'thin' }}>
               {tabs.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   type="button"
                   onClick={() => setActiveTab(id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-black transition-all border ${
-                    activeTab === id
-                      ? 'bg-navy text-white border-navy shadow-md shadow-navy/20'
-                      : 'bg-card-bg text-text-muted border-border-color hover:text-navy'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-black transition-all border shrink-0 ${activeTab === id
+                    ? 'bg-navy text-white border-navy shadow-md shadow-navy/20'
+                    : 'bg-card-bg text-text-muted border-border-color hover:text-navy'
+                    }`}
                 >
                   <Icon size={14} /> {label}
                 </button>
@@ -1034,6 +1033,162 @@ const Reports = () => {
                 </div>
               </div>
             )}
+
+            {activeTab === 'applicantsReport' && (() => {
+              const totalApplicants = topApplicants.length;
+              const totalApps = topApplicants.reduce((s, a) => s + (a.applications || 0), 0);
+              const totalApproved = topApplicants.reduce((s, a) => s + (a.approved || 0), 0);
+              const totalRevenue = topApplicants.reduce((s, a) => s + (Number(a.revenue) || 0), 0);
+              const approvalRate = totalApps > 0 ? ((totalApproved / totalApps) * 100).toFixed(1) : '0.0';
+              const avgAppsPerApplicant = totalApplicants > 0 ? (totalApps / totalApplicants).toFixed(1) : '0';
+
+              // District distribution from topApplicants districts field
+              const districtMap = {};
+              topApplicants.forEach(a => {
+                (a.districts || []).filter(Boolean).forEach(d => {
+                  districtMap[d] = (districtMap[d] || 0) + 1;
+                });
+              });
+              const districtData = Object.entries(districtMap)
+                .map(([d, count]) => ({ district: d, count }))
+                .sort((a, b) => b.count - a.count);
+
+              return (
+                <div className="space-y-6">
+                  {/* Summary cards */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                      { label: 'Total Applicants', value: totalApplicants, icon: Users, color: 'text-blue-600', bg: 'bg-blue-500/10' },
+                      { label: 'Total Applications', value: totalApps, icon: FileText, color: 'text-navy', bg: 'bg-navy/10' },
+                      { label: 'Approval Rate', value: `${approvalRate}%`, icon: UserCheck, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
+                      { label: 'Avg Apps / Person', value: avgAppsPerApplicant, icon: Activity, color: 'text-amber-600', bg: 'bg-amber-500/10' },
+                    ].map(card => (
+                      <div key={card.label} className="bg-card-bg rounded-2xl border border-border-color p-5 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className={`p-2.5 rounded-xl ${card.bg}`}>
+                            <card.icon size={16} className={card.color} />
+                          </div>
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">{card.label}</span>
+                        </div>
+                        <h3 className={`text-2xl font-black tracking-tighter ${card.color}`}>{card.value}</h3>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Revenue + District chart row */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* District distribution */}
+                    <div className="bg-card-bg rounded-2xl border border-border-color p-6 shadow-sm">
+                      <h3 className="text-base font-black text-navy mb-5">Applicants by District</h3>
+                      {districtData.length > 0 ? (
+                        <div className="h-[220px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={districtData} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+                              <XAxis dataKey="district" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
+                              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
+                              <Tooltip contentStyle={tooltipStyle} />
+                              <Bar dataKey="count" radius={[6, 6, 6, 6]} barSize={32}>
+                                {districtData.map((_, i) => (
+                                  <Cell key={i} fill={i === 0 ? (darkMode ? '#4f8ef7' : '#0a2647') : (darkMode ? '#334155' : '#e2e8f0')} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center h-[220px] text-text-muted text-sm">No district data.</div>
+                      )}
+                    </div>
+
+                    {/* Approval breakdown */}
+                    <div className="bg-card-bg rounded-2xl border border-border-color p-6 shadow-sm">
+                      <h3 className="text-base font-black text-navy mb-5">Application Outcomes</h3>
+                      <div className="space-y-4">
+                        {[
+                          { label: 'Total Submitted', value: totalApps, color: 'bg-navy', pct: 100 },
+                          { label: 'Approved', value: totalApproved, color: 'bg-emerald-500', pct: totalApps > 0 ? (totalApproved / totalApps) * 100 : 0 },
+                          { label: 'Pending / Other', value: totalApps - totalApproved, color: 'bg-amber-400', pct: totalApps > 0 ? ((totalApps - totalApproved) / totalApps) * 100 : 0 },
+                          { label: 'Total Revenue', value: formatCurrency(totalRevenue), color: 'bg-blue-500', pct: null },
+                        ].map(item => (
+                          <div key={item.label}>
+                            <div className="flex justify-between items-center mb-1.5">
+                              <span className="text-[12px] font-bold text-text-muted uppercase tracking-wider">{item.label}</span>
+                              <span className="text-[13px] font-black text-navy">{item.value}</span>
+                            </div>
+                            {item.pct !== null && (
+                              <div className="w-full h-2 bg-table-header-bg rounded-full overflow-hidden">
+                                <div className={`h-2 rounded-full ${item.color}`} style={{ width: `${Math.min(item.pct, 100)}%` }} />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Full applicants table */}
+                  <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm overflow-hidden">
+                    <div className="p-6 flex justify-between items-center border-b border-border-color">
+                      <h3 className="text-lg font-black text-navy">All Applicants Detail</h3>
+                      <span className="text-[11px] font-black text-text-muted uppercase tracking-widest">{totalApplicants} applicants</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left min-w-[860px]">
+                        <thead>
+                          <tr className="bg-table-header-bg/50">
+                            {['#', 'Applicant', 'Phone', 'Applications', 'Approved', 'Approval Rate', 'Revenue', 'Districts'].map(h => (
+                              <th key={h} className="py-4 px-5 text-[10px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-color">
+                          {topApplicants.map((a, i) => {
+                            const rate = a.applications > 0 ? ((a.approved / a.applications) * 100).toFixed(0) : 0;
+                            return (
+                              <tr key={i} className="hover:bg-table-header-bg/30">
+                                <td className="py-4 px-5 text-sm font-bold text-text-muted">{i + 1}</td>
+                                <td className="py-4 px-5">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-xl bg-navy/10 text-navy flex items-center justify-center text-[11px] font-black shrink-0">
+                                      {(a.applicant || '?').charAt(0).toUpperCase()}
+                                    </div>
+                                    <span className="text-sm font-bold text-navy">{a.applicant || '—'}</span>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-5 text-sm text-text-muted font-medium">{a.phone || '—'}</td>
+                                <td className="py-4 px-5 text-sm font-bold text-navy text-center">{a.applications}</td>
+                                <td className="py-4 px-5 text-sm text-center">
+                                  <span className="bg-emerald-500/10 text-emerald-600 font-black text-[11px] px-2.5 py-1 rounded-full">{a.approved}</span>
+                                </td>
+                                <td className="py-4 px-5">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1 h-1.5 bg-table-header-bg rounded-full overflow-hidden">
+                                      <div className="h-1.5 bg-emerald-500 rounded-full" style={{ width: `${rate}%` }} />
+                                    </div>
+                                    <span className="text-[11px] font-black text-text-muted w-8">{rate}%</span>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-5 text-sm font-bold text-navy">{formatCurrency(a.revenue)}</td>
+                                <td className="py-4 px-5 text-sm text-text-muted font-medium">
+                                  {Array.isArray(a.districts) ? a.districts.filter(Boolean).join(', ') || '—' : '—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {!topApplicants.length && (
+                            <tr>
+                              <td colSpan={8} className="py-12 text-center text-text-muted text-sm font-medium">
+                                No applicant data for the current filters.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {activeTab === 'users' && isAdmin && (
               <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm overflow-hidden">

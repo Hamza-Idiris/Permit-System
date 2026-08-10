@@ -133,10 +133,9 @@ const sendNotification = async (req, res) => {
         }
         recipients = [admin];
       } else {
-        // applicants in selected district (or staff's own district)
-        const targetDistrict = district || req.user.district;
+        const targetDistrict = req.user.district;
         if (!targetDistrict) {
-          return res.status(400).json({ success: false, message: 'Please select a district' });
+          return res.status(400).json({ success: false, message: 'Staff user has no district assigned.' });
         }
         recipients = await User.find({
           role: 'applicant',
@@ -150,7 +149,7 @@ const sendNotification = async (req, res) => {
           return res.status(400).json({ success: false, message: 'Please select a district' });
         }
         recipients = await User.find({
-          role: 'applicant',
+          role: role || 'applicant',
           district,
           isActive: { $ne: false }
         }).select('_id');
