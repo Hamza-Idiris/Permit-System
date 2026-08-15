@@ -413,7 +413,7 @@ const NotificationsHub = () => {
                 <StatCard icon={Info} label="Updates" count={stats.Info} color="text-blue-500" bg="bg-blue-500/5" borderColor="border-blue-500/20" isActive={activeFilter === 'Info'} onClick={() => setActiveFilter('Info')} />
               </div>
 
-              <div className="bg-card-bg rounded-[32px] border border-border-color shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+              <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm overflow-hidden flex flex-col min-h-[500px]">
                 <div className="flex items-center justify-between p-6 border-b border-border-color">
                   <div className="flex items-center gap-4">
                     <div className="p-2 bg-table-header-bg rounded-lg">
@@ -556,7 +556,7 @@ const NotificationsHub = () => {
 
               <form
                 onSubmit={handleSend}
-                className="bg-card-bg rounded-[32px] border border-border-color p-8 shadow-sm space-y-6"
+                className="bg-card-bg rounded-2xl border border-border-color p-8 shadow-sm space-y-6"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-xl bg-table-header-bg">

@@ -122,7 +122,7 @@ const Profile = () => {
             </div>
           </div>
 
-          <div className="bg-card-bg rounded-3xl p-6 sm:p-8 shadow-sm border border-border-color transition-colors duration-300">
+          <div className="bg-card-bg rounded-2xl p-6 sm:p-8 shadow-sm border border-border-color transition-colors duration-300">
             {message.text && (
               <div className={`p-4 mb-6 rounded-xl border ${message.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
                 }`}>

@@ -133,7 +133,7 @@ const ChangePassword = () => {
                         </div>
                     </div>
 
-                    <div className="bg-card-bg rounded-3xl p-6 sm:p-8 shadow-sm border border-border-color transition-colors duration-300">
+                    <div className="bg-card-bg rounded-2xl p-6 sm:p-8 shadow-sm border border-border-color transition-colors duration-300">
                         {message.text && (
                             <div className={`p-4 mb-6 rounded-xl border ${message.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
                                 }`}>
@@ -218,7 +218,7 @@ const ChangePassword = () => {
                     </div>
 
                     {isSuperAdmin && (
-                        <div className="mt-8 bg-card-bg rounded-3xl p-6 sm:p-8 shadow-sm border border-border-color transition-colors duration-300">
+                        <div className="mt-8 bg-card-bg rounded-2xl p-6 sm:p-8 shadow-sm border border-border-color transition-colors duration-300">
                             <h2 className="text-xl font-extrabold text-navy mb-1">Offline Payment PIN</h2>
                             <p className="text-sm text-text-muted mb-6 font-medium">
                                 Applicants use this 4-digit PIN for offline payment. Default is 1234 until you change it.

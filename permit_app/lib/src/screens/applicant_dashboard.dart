@@ -691,22 +691,7 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                               if (mounted) await _fetchNotifications();
                             }
 
-                            final matchApp = RegExp(r'MOG-\d{4}-\d{4}').firstMatch(message);
-                            final matchPermit = RegExp(r'MUBP-\d{4}-[A-Z0-9]{5}').firstMatch(message);
-                            final appId = matchApp?.group(0);
-                            final permitId = matchPermit?.group(0);
-
-                            dynamic matchingPermit;
-                            if (appId != null || permitId != null) {
-                              for (final p in _permits) {
-                                if (p is! Map) continue;
-                                if ((appId != null && p['applicationId']?.toString() == appId) ||
-                                    (permitId != null && p['permitId']?.toString() == permitId)) {
-                                  matchingPermit = p;
-                                  break;
-                                }
-                              }
-                            }
+                            final matchingPermit = await _resolvePermitFromNotification(notif, message);
 
                             if (!mounted) return;
 
@@ -739,6 +724,44 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                   ),
                 ),
     );
+  }
+
+  dynamic _findPermitInList(Map<String, dynamic> notif, String message) {
+    final relatedId = notif['relatedId']?.toString();
+    final matchApp = RegExp(r'MOG-\d{4}-\d{4}').firstMatch(message);
+    final matchPermit = RegExp(r'MUBP-\d{4}-[A-Z0-9]{5}').firstMatch(message);
+    final appId = matchApp?.group(0);
+    final permitId = matchPermit?.group(0);
+
+    if (relatedId == null && appId == null && permitId == null) return null;
+
+    for (final p in _permits) {
+      if (p is! Map) continue;
+      if ((relatedId != null && p['_id']?.toString() == relatedId) ||
+          (appId != null && p['applicationId']?.toString() == appId) ||
+          (permitId != null && p['permitId']?.toString() == permitId)) {
+        return p;
+      }
+    }
+    return null;
+  }
+
+  Future<dynamic> _resolvePermitFromNotification(Map<String, dynamic> notif, String message) async {
+    var matchingPermit = _findPermitInList(notif, message);
+    if (matchingPermit != null) return matchingPermit;
+
+    final relatedId = notif['relatedId']?.toString();
+    if (relatedId == null || relatedId.isEmpty) return null;
+
+    await _fetchPermits(silent: true);
+    matchingPermit = _findPermitInList(notif, message);
+    if (matchingPermit != null) return matchingPermit;
+
+    final result = await _permitService.getApplicationById(relatedId);
+    if (result['success'] == true && result['data'] is Map) {
+      return result['data'];
+    }
+    return null;
   }
 
   String _formatRelativeTime(String isoString) {

@@ -34,36 +34,41 @@ const PermitTypeBadge = ({ type }) => (
     </span>
 );
 
-const StatCard = ({ icon: Icon, label, value, color, glow, statusKey, isActive, onClick }) => (
+const StatCard = ({ icon: Icon, label, value, color, statusKey, isActive, onClick }) => (
     <button
+        type="button"
         onClick={() => onClick(statusKey)}
-        className={`bg-card-bg p-7 rounded-[28px] border relative overflow-hidden group text-left w-full transition-all duration-300 flex flex-col ${isActive
-            ? 'border-navy/30 ring-2 ring-navy/20 scale-[1.02] shadow-lg bg-navy/5'
-            : 'border-border-color hover:border-navy/20'
-            }`}
+        className={[
+            'relative text-left w-full bg-card-bg rounded-2xl p-5 border transition-all duration-200 flex flex-col',
+            isActive
+                ? 'border-blue-400/50 shadow-lg shadow-blue-500/20 ring-1 ring-blue-400/30'
+                : 'border-border-color shadow-sm hover:shadow-md hover:border-blue-200/60',
+        ].join(' ')}
     >
-        <div className="absolute -right-4 -top-4 w-28 h-28 bg-current opacity-[0.02] rounded-full group-hover:scale-150 transition-transform duration-700" />
-        <div className="flex items-center justify-between mb-6 w-full">
-            <div className={`p-3 rounded-2xl ${color} bg-opacity-20 ${glow} shrink-0`}>
-                <Icon size={20} className="text-white" />
-            </div>
-            <div className="flex items-center gap-2">
-                {isActive && (
-                    <span className="text-[9px] font-black text-white bg-navy px-2 py-0.5 rounded-full uppercase tracking-widest shadow-sm">
-                        Active
-                    </span>
-                )}
-                <span className="text-[10px] font-black text-text-muted uppercase tracking-widest transition-colors">{statLabelMap[statusKey] || label}</span>
-            </div>
-        </div>
-        <div className="mt-auto w-full">
-            <h4 className="text-4xl font-black text-navy tracking-tighter transition-colors">{value ?? '—'}</h4>
-            <p className="text-[11px] font-black text-text-muted mt-1 uppercase tracking-widest opacity-60">
-                {statusKey === 'all' ? 'Total' : statusKey} Application
+        <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] font-semibold text-text-muted uppercase tracking-widest leading-tight">
+                {statLabelMap[statusKey] || label}
             </p>
-            <div className={`h-1.5 rounded-full mt-5 ${color} transition-all duration-700 ${isActive ? 'w-full opacity-40' : 'w-10 opacity-20 group-hover:w-full'
-                }`} />
+            <div
+                className={[
+                    'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all',
+                    isActive
+                        ? `${color} text-white shadow-md shadow-blue-500/25`
+                        : 'bg-table-header-bg text-text-muted',
+                ].join(' ')}
+            >
+                <Icon size={16} />
+            </div>
         </div>
+        <h3 className="text-[26px] font-black text-navy tracking-tight leading-none mb-1.5">
+            {value ?? '—'}
+        </h3>
+        <p className="text-[11px] font-medium text-text-muted capitalize">
+            {statusKey === 'all' ? 'All applications' : `${statusKey} applications`}
+        </p>
+        {isActive && (
+            <span className="absolute left-0 top-4 bottom-4 w-[3px] rounded-r-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.55)]" />
+        )}
     </button>
 );
 
@@ -216,28 +221,28 @@ const StaffApplications = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-7">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
                         <StatCard
                             icon={FileSearch} label="All Applications" value={stats.all}
-                            color="bg-indigo-500" glow="stat-glow-indigo"
+                            color="bg-indigo-500"
                             statusKey="all" isActive={activeFilter === 'all'}
                             onClick={() => setActiveFilter('all')}
                         />
                         <StatCard
                             icon={Clock} label="Total Pending" value={stats.pending}
-                            color="bg-amber-500" glow="stat-glow-amber"
+                            color="bg-amber-500"
                             statusKey="pending" isActive={activeFilter === 'pending'}
                             onClick={(key) => setActiveFilter(activeFilter === key ? 'all' : key)}
                         />
                         <StatCard
                             icon={CheckCircle2} label="Approved" value={stats.approved}
-                            color="bg-emerald-500" glow="stat-glow-emerald"
+                            color="bg-emerald-500"
                             statusKey="approved" isActive={activeFilter === 'approved'}
                             onClick={(key) => setActiveFilter(activeFilter === key ? 'all' : key)}
                         />
                         <StatCard
                             icon={CornerDownLeft} label="Returned" value={stats.returned}
-                            color="bg-rose-500" glow="stat-glow-rose"
+                            color="bg-rose-500"
                             statusKey="returned" isActive={activeFilter === 'returned'}
                             onClick={(key) => setActiveFilter(activeFilter === key ? 'all' : key)}
                         />

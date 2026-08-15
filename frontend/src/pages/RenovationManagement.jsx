@@ -182,7 +182,7 @@ const RenovationManagement = () => {
                         )}
 
                         {/* Main Table */}
-                        <div className="bg-card-bg rounded-[32px] border border-border-color shadow-sm p-8 space-y-6 transition-colors duration-300">
+                        <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm p-8 space-y-6 transition-colors duration-300">
                             <div className="flex justify-end items-center pb-2">
                                 <div className="text-[11px] font-black text-text-muted uppercase tracking-[0.15em]">
                                     SHOWING {filtered.length} TYPES

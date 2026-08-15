@@ -237,7 +237,7 @@ const Notifications = () => {
             /* Skeleton */
             <div className="space-y-3">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-card-bg rounded-xl border border-border-color p-5 flex gap-4 animate-pulse">
+                <div key={i} className="bg-card-bg rounded-2xl border border-border-color shadow-sm p-5 flex gap-4 animate-pulse">
                   <div className="w-10 h-10 rounded-xl bg-table-header-bg shrink-0" />
                   <div className="flex-1 space-y-2 py-1">
                     <div className="h-3 bg-table-header-bg rounded w-3/4" />
@@ -258,9 +258,9 @@ const Notifications = () => {
                 <div
                   key={notif._id}
                   onClick={() => markAsRead(notif)}
-                  className={`group bg-card-bg rounded-xl border transition-all duration-300 cursor-pointer
+                  className={`group bg-card-bg rounded-2xl border shadow-sm transition-all duration-300 cursor-pointer
                     ${notif.isRead
-                      ? 'border-border-color hover:brightness-95'
+                      ? 'border-border-color hover:shadow-md'
                       : 'border-border-color shadow-sm ring-1 ring-border-color'
                     }`}
                 >

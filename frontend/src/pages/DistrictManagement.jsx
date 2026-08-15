@@ -142,7 +142,7 @@ const DistrictManagement = () => {
                         </div>
 
                         {/* Main Table Card */}
-                        <div className="bg-card-bg rounded-[32px] border border-border-color shadow-sm p-8 space-y-6 transition-colors duration-300">
+                        <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm p-8 space-y-6 transition-colors duration-300">
 
                             <div className="flex justify-between items-center pb-2">
                                 <div className="flex items-center gap-4">

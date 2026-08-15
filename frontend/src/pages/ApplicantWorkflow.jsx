@@ -384,7 +384,7 @@ const ApplicantWorkflow = () => {
                   <h3 className="text-[11px] font-bold text-text-muted uppercase tracking-[0.1em]">Recent Applications</h3>
                   <button className="text-[12px] font-bold text-navy hover:underline tracking-wide">View All</button>
                 </div>
-                <div className="bg-card-bg rounded-[10px] border border-border-color overflow-x-auto shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
+                <div className="bg-card-bg rounded-2xl border border-border-color overflow-x-auto shadow-sm">
                   <table className="w-full min-w-[700px] text-left border-collapse">
                     <thead>
                       <tr className="border-b border-border-color bg-table-header-bg/30">
@@ -475,7 +475,7 @@ const ApplicantWorkflow = () => {
               <form onSubmit={handleSubmit} className="space-y-6 lg:space-y-8">
 
                 {/* 1. Applicant Info */}
-                <section className="bg-card-bg rounded-[10px] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] border border-navy/10 overflow-hidden">
+                <section className="bg-card-bg rounded-2xl shadow-sm border border-border-color overflow-hidden">
                   <div className="bg-table-header-bg border-b border-navy/10 px-6 py-4 flex items-center gap-3">
                     <div className="text-navy"><FileText size={18} /></div>
                     <h2 className="font-bold text-[14px] text-navy tracking-wide">1. Applicant Information</h2>
@@ -497,7 +497,7 @@ const ApplicantWorkflow = () => {
                 </section>
 
                 {/* 2. Project Details */}
-                <section className="bg-card-bg rounded-[10px] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] border border-navy/10 overflow-hidden">
+                <section className="bg-card-bg rounded-2xl shadow-sm border border-border-color overflow-hidden">
                   <div className="bg-table-header-bg border-b border-navy/10 px-6 py-4 flex items-center gap-3">
                     <div className="text-navy"><Home size={18} /></div>
                     <h2 className="font-bold text-[14px] text-navy tracking-wide">2. Project Details</h2>
@@ -589,7 +589,7 @@ const ApplicantWorkflow = () => {
                 </section>
 
                 {/* 3. Document Upload Section */}
-                <section className="bg-card-bg rounded-[10px] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] border border-navy/10 overflow-hidden">
+                <section className="bg-card-bg rounded-2xl shadow-sm border border-border-color overflow-hidden">
                   <div className="bg-table-header-bg border-b border-navy/10 px-6 py-4 flex items-center gap-3">
                     <div className="text-navy"><Upload size={18} /></div>
                     <h2 className="font-bold text-[14px] text-navy tracking-wide">3. Document Submission</h2>
@@ -625,7 +625,7 @@ const ApplicantWorkflow = () => {
                   </div>
                 </section>
 
-                <section className="bg-card-bg rounded-[10px] shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] border border-navy/10 overflow-hidden mb-12">
+                <section className="bg-card-bg rounded-2xl shadow-sm border border-border-color overflow-hidden mb-12">
                   <div className="bg-table-header-bg border-b border-navy/10 px-6 py-4 flex items-center gap-3">
                     <div className="text-navy"><ShieldCheck size={18} /></div>
                     <h2 className="font-bold text-[14px] text-navy tracking-wide">4. Declaration & Signature</h2>
@@ -652,7 +652,7 @@ const ApplicantWorkflow = () => {
                   </div>
                 </section>
 
-                <div className="flex flex-col lg:flex-row justify-between items-center bg-card-bg p-4 lg:p-6 rounded-[10px] border border-border-color shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] sticky bottom-0 lg:bottom-6 z-50 mt-12 gap-4 lg:gap-0 transition-colors duration-300">
+                <div className="flex flex-col lg:flex-row justify-between items-center bg-card-bg p-4 lg:p-6 rounded-2xl border border-border-color shadow-sm sticky bottom-0 lg:bottom-6 z-50 mt-12 gap-4 lg:gap-0 transition-colors duration-300">
                   <button type="button" onClick={closeForm} className="w-full lg:w-auto justify-center font-bold text-[13px] text-gray-500 hover:text-gray-800 transition-colors flex items-center gap-2"><ArrowLeft size={16} strokeWidth={2.5} /> Back to Dashboard</button>
 
                   {!isReadOnly && (

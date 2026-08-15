@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import {
     Clock, CheckCircle2, CornerDownLeft, FileSearch,
-    ClipboardList, QrCode, BarChart3, Plus, MapPin, ArrowRight
+    ClipboardList, QrCode, BarChart3, Plus, MapPin
 } from 'lucide-react';
 import TopHeader from '../components/TopHeader';
 import LoadingScreen from '../components/LoadingScreen';
@@ -16,19 +16,16 @@ const StatCard = ({ icon: Icon, label, value, color, onClick }) => (
     <button
         type="button"
         onClick={onClick}
-        className="bg-card-bg p-7 rounded-[28px] border border-border-color hover:border-navy/20 text-left w-full transition-all duration-300 flex flex-col group"
+        className="relative text-left w-full bg-card-bg rounded-2xl p-5 border border-border-color shadow-sm hover:shadow-md hover:border-blue-200/60 transition-all duration-200 flex flex-col group"
     >
-        <div className="flex items-center justify-between mb-6 w-full">
-            <div className={`p-3 rounded-2xl ${color} bg-opacity-20 shrink-0`}>
-                <Icon size={20} className="text-white" />
+        <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] font-semibold text-text-muted uppercase tracking-widest leading-tight">{label}</p>
+            <div className={`w-9 h-9 rounded-xl ${color} text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/15`}>
+                <Icon size={16} />
             </div>
-            <ArrowRight size={16} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
-        <div className="mt-auto w-full">
-            <h4 className="text-4xl font-black text-navy tracking-tighter">{value ?? '—'}</h4>
-            <p className="text-[11px] font-black text-text-muted mt-1 uppercase tracking-widest opacity-70">{label}</p>
-            <div className={`h-1.5 rounded-full mt-5 ${color} w-10 opacity-20 group-hover:w-full transition-all duration-700`} />
-        </div>
+        <h3 className="text-[26px] font-black text-navy tracking-tight leading-none mb-1.5">{value ?? '—'}</h3>
+        <p className="text-[11px] font-medium text-text-muted group-hover:text-navy transition-colors">View details</p>
     </button>
 );
 
@@ -114,19 +111,19 @@ const StaffDashboard = () => {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                        <div className="bg-card-bg border border-border-color rounded-2xl p-6">
+                        <div className="bg-card-bg border border-border-color rounded-2xl p-6 shadow-sm">
                             <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">District Revenue</p>
                             <p className="text-3xl font-black text-navy">${stats.revenue.toLocaleString()}</p>
                             <p className="text-[12px] text-text-muted font-bold mt-2">From applications in {user?.district || 'your district'}</p>
                         </div>
-                        <button onClick={() => navigate('/staff/verify')} className="bg-card-bg border border-border-color rounded-2xl p-6 text-left hover:border-navy/30 transition-all group">
+                        <button onClick={() => navigate('/staff/verify')} className="bg-card-bg border border-border-color rounded-2xl p-6 shadow-sm text-left hover:border-navy/30 hover:shadow-md transition-all group">
                             <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center mb-4">
                                 <QrCode size={20} />
                             </div>
                             <p className="font-black text-navy text-[15px]">Verify Permit / QR</p>
                             <p className="text-[12px] text-text-muted font-bold mt-1">Check permit ID or QR payload</p>
                         </button>
-                        <button onClick={() => navigate('/staff/reports')} className="bg-card-bg border border-border-color rounded-2xl p-6 text-left hover:border-navy/30 transition-all group">
+                        <button onClick={() => navigate('/staff/reports')} className="bg-card-bg border border-border-color rounded-2xl p-6 shadow-sm text-left hover:border-navy/30 hover:shadow-md transition-all group">
                             <div className="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center mb-4">
                                 <BarChart3 size={20} />
                             </div>

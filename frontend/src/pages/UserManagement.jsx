@@ -237,7 +237,7 @@ const UserManagement = () => {
             </div>
 
             {/* Main Table Card */}
-            <div className="bg-card-bg rounded-[32px] border border-border-color shadow-[0_10px_35px_rgba(0,0,0,0.015)] p-8 space-y-6 transition-colors duration-300">
+            <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm p-8 space-y-6 transition-colors duration-300">
 
               {/* Filters Header */}
               <div className="flex justify-between items-center pb-2">

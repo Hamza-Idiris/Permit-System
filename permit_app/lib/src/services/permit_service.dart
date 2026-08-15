@@ -72,6 +72,30 @@ class PermitService {
     }
   }
 
+  Future<Map<String, dynamic>> getApplicationById(String applicationId) async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) return {'success': false, 'message': 'No authentication token found'};
+
+      final response = await http.get(
+        Uri.parse('${Constants.apiBaseUrl}/permits/$applicationId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data['data']};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Failed to fetch application'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'An error occurred: $e'};
+    }
+  }
+
   Future<Map<String, dynamic>> getMyApplications() async {
     try {
       final token = await _storage.read(key: 'token');

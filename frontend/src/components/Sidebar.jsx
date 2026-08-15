@@ -80,95 +80,121 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
     <>
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-40 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       <aside
         className={`
-          w-[220px] shrink-0 flex flex-col min-h-screen z-50
-          fixed lg:static inset-y-0 left-0 transition-all duration-300
-          ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'}
-          ${darkMode
-            ? 'bg-[#0d1b2a] text-white border-r border-white/5'
-            : 'bg-white text-navy border-r border-gray-200 shadow-[1px_0_0_0_rgba(0,0,0,0.03)]'
-          }
+          sidebar-shell w-[240px] shrink-0 flex flex-col h-screen z-50
+          fixed lg:static inset-y-0 left-0 transition-transform duration-300 ease-out
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          ${darkMode ? 'sidebar-shell--dark' : 'sidebar-shell--light'}
         `}
       >
         <button
+          type="button"
           onClick={() => setIsMobileMenuOpen(false)}
-          className={`absolute top-4 right-4 lg:hidden p-1.5 rounded-lg transition-all ${darkMode
-              ? 'text-white/40 hover:text-white hover:bg-white/5'
-              : 'text-gray-400 hover:text-navy hover:bg-gray-100'
-            }`}
+          className={`absolute top-3.5 right-3.5 lg:hidden p-1.5 rounded-md transition-colors ${
+            darkMode
+              ? 'text-white/40 hover:text-white hover:bg-white/10'
+              : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+          }`}
+          aria-label="Close menu"
         >
-          <X size={18} />
+          <X size={16} strokeWidth={1.75} />
         </button>
 
-        <div className={`px-6 pt-8 pb-8 border-b ${darkMode ? 'border-white/5' : 'border-gray-100'}`}>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <Building2 size={18} className="text-white" />
+        {/* Brand */}
+        <div className={`px-5 pt-6 pb-5 ${darkMode ? 'border-b border-white/10' : 'border-b border-slate-100'}`}>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-500 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/35 ring-1 ring-blue-400/30">
+              <Building2 size={16} className="text-white" strokeWidth={1.75} />
             </div>
-            <div>
-              <p className={`font-black text-[14px] leading-tight ${darkMode ? 'text-white' : 'text-navy'}`}>
+            <div className="min-w-0">
+              <p className={`text-[13px] font-semibold tracking-tight leading-none ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                 M-DBPS
               </p>
-              <p className={`text-[9px] font-bold leading-snug mt-0.5 ${darkMode ? 'text-white/35' : 'text-gray-400'}`}>
-                Mogadishu Digital Building Permit System
+              <p className={`text-[10px] mt-1 truncate ${darkMode ? 'text-white/40' : 'text-slate-400'}`}>
+                Building Permit System
               </p>
             </div>
           </div>
-          <div className={`mt-3 px-2 py-1 rounded-lg inline-flex items-center gap-1.5 ${darkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
-            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
-            <span className={`text-[9px] font-black uppercase tracking-widest ${darkMode ? 'text-white/40' : 'text-gray-500'}`}>
-              {isAdmin ? 'Super Admin Console' : 'Staff Console'}
-            </span>
-          </div>
+
+          <p className={`mt-4 text-[10px] font-medium uppercase tracking-[0.14em] ${darkMode ? 'text-white/30' : 'text-slate-400'}`}>
+            {isAdmin ? 'Administration' : 'Staff'}
+          </p>
         </div>
 
-        <nav className="flex-1 px-3 pt-5 space-y-0.5 overflow-y-auto">
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto sidebar-scroll">
           {NAV.map(({ icon: Icon, label, to, badge }) => (
             <NavLink
               key={to}
               to={to}
               onClick={() => setIsMobileMenuOpen?.(false)}
               className={({ isActive }) =>
-                `flex items-center justify-between px-4 py-2.5 rounded-xl text-[13px] font-bold transition-all no-underline group ${isActive
-                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-                  : darkMode
-                    ? 'text-white/45 hover:text-white hover:bg-white/6'
-                    : 'text-gray-500 hover:text-navy hover:bg-gray-100'
-                }`
+                [
+                  'group relative flex items-center justify-between gap-2 px-3 py-[9px] rounded-xl text-[12.5px] font-medium no-underline transition-all duration-200',
+                  isActive
+                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/25'
+                    : darkMode
+                      ? 'text-white/50 hover:text-white hover:bg-white/8'
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50',
+                ].join(' ')
               }
             >
-              <div className="flex items-center gap-3">
-                <Icon size={16} />
-                <span>{label}</span>
-              </div>
-              {badge && unreadCount > 0 && (
-                <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                  {unreadCount}
-                </span>
+              {({ isActive }) => (
+                <>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon
+                      size={15}
+                      strokeWidth={1.75}
+                      className={
+                        isActive
+                          ? 'text-white drop-shadow-[0_0_6px_rgba(191,219,254,0.8)]'
+                          : darkMode
+                            ? 'text-white/40 group-hover:text-blue-200'
+                            : 'text-slate-400 group-hover:text-blue-500'
+                      }
+                    />
+                    <span className="truncate">{label}</span>
+                  </div>
+                  {badge && unreadCount > 0 && (
+                    <span
+                      className={`shrink-0 text-[10px] font-semibold tabular-nums min-w-[18px] h-[18px] px-1.5 rounded-full flex items-center justify-center shadow-md ${
+                        isActive
+                          ? 'bg-white text-blue-600 shadow-white/30'
+                          : 'bg-rose-500 text-white shadow-rose-500/35'
+                      }`}
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </>
               )}
             </NavLink>
           ))}
         </nav>
 
-        <div className={`px-3 pb-6 pt-4 border-t space-y-1 ${darkMode ? 'border-white/5' : 'border-gray-100'}`}>
-          <div className="flex items-center gap-3 px-4 py-3 mb-1">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-black shrink-0 ${darkMode
-                ? 'bg-white/10 border border-white/10 text-white'
-                : 'bg-navy/5 border border-navy/10 text-navy'
-              }`}>
+        {/* User */}
+        <div className={`px-3 py-4 ${darkMode ? 'border-t border-white/10' : 'border-t border-slate-100'}`}>
+          <div
+            className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl ${
+              darkMode
+                ? 'bg-white/5 ring-1 ring-white/10'
+                : 'bg-white ring-1 ring-slate-200/80 shadow-sm shadow-slate-200/60'
+            }`}
+          >
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-semibold shrink-0 bg-blue-500 text-white shadow-md shadow-blue-500/30">
               {user?.fullName?.[0]?.toUpperCase() || 'U'}
             </div>
-            <div className="overflow-hidden">
-              <p className={`text-[12px] font-black truncate leading-none capitalize ${darkMode ? 'text-white' : 'text-navy'}`}>
+            <div className="min-w-0 flex-1">
+              <p className={`text-[12px] font-medium truncate leading-tight ${darkMode ? 'text-white/90' : 'text-slate-800'}`}>
                 {user?.fullName || 'User'}
               </p>
-              <p className={`text-[9px] font-black uppercase tracking-widest mt-0.5 truncate ${darkMode ? 'text-white/35' : 'text-gray-400'}`}>
+              <p className={`text-[10px] truncate mt-0.5 capitalize ${darkMode ? 'text-white/35' : 'text-slate-400'}`}>
                 {user?.role}
               </p>
             </div>

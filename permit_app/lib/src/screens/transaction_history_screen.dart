@@ -67,30 +67,15 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           _buildSliverAppBar(isDark),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Financial Records',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                      color: isDark ? Colors.white54 : ColorPallete.hintTextColor,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    'History of Payments',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : ColorPallete.primaryNavy,
-                    ),
-                  ),
-                  const SizedBox(height: 25),
-                ],
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Text(
+                'Financial Records',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                  color: isDark ? Colors.white54 : ColorPallete.hintTextColor,
+                ),
               ),
             ),
           ),
@@ -114,41 +99,79 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   Widget _buildSliverAppBar(bool isDark) {
     return SliverAppBar(
-      expandedHeight: 120.0,
+      expandedHeight: 200.0,
       floating: false,
       pinned: true,
       elevation: 0,
-       leading: Padding(
+      leading: Padding(
         padding: const EdgeInsets.all(8.0),
         child: CircleAvatar(
-          backgroundColor: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+          backgroundColor: Colors.white.withOpacity(0.15),
           child: IconButton(
-            icon: Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: isDark ? Colors.white : ColorPallete.primaryNavy),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
             onPressed: () => Navigator.pop(context),
           ),
         ),
       ),
-      backgroundColor: isDark ? ColorPallete.darkBackgroundColor : ColorPallete.backgroundColor,
+      backgroundColor: ColorPallete.primaryNavy,
       flexibleSpace: FlexibleSpaceBar(
+        titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
+        title: const Text(
+          'History of Payments',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            fontSize: 18,
+          ),
+        ),
         background: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                ColorPallete.primaryNavy.withOpacity(isDark ? 0.2 : 0.05),
-                isDark ? ColorPallete.darkBackgroundColor : ColorPallete.backgroundColor,
-              ],
-            ),
+            gradient: isDark
+                ? const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF0B2C4A), Color(0xFF0A5C55)],
+                  )
+                : ColorPallete.accentGradient,
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -50,
+                top: -50,
+                child: CircleAvatar(
+                  radius: 100,
+                  backgroundColor: Colors.white.withOpacity(0.1),
+                ),
+              ),
+              Positioned(
+                left: -30,
+                bottom: -40,
+                child: CircleAvatar(
+                  radius: 60,
+                  backgroundColor: Colors.white.withOpacity(0.06),
+                ),
+              ),
+              const Center(
+                child: Icon(
+                  Icons.payments_rounded,
+                  size: 80,
+                  color: Colors.white24,
+                ),
+              ),
+            ],
           ),
         ),
       ),
       actions: [
         Padding(
-          padding: const EdgeInsets.only(right: 15),
-          child: IconButton(
-            icon: Icon(Icons.refresh_rounded, color: isDark ? Colors.white70 : ColorPallete.primaryNavy),
-            onPressed: _fetchTransactions,
+          padding: const EdgeInsets.only(right: 8),
+          child: CircleAvatar(
+            backgroundColor: Colors.white.withOpacity(0.15),
+            child: IconButton(
+              icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+              onPressed: _fetchTransactions,
+            ),
           ),
         ),
       ],
@@ -294,22 +317,53 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   }
 
   Widget _buildEmptyState() {
+    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.history_rounded, size: 80, color: Colors.grey.withOpacity(0.2)),
-          const SizedBox(height: 20),
-          const Text(
-            'No transactions yet',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: ColorPallete.primaryNavy),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Your payment records will appear here.',
-            style: TextStyle(color: ColorPallete.hintTextColor),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 110,
+              height: 110,
+              decoration: BoxDecoration(
+                gradient: ColorPallete.accentGradient,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: ColorPallete.accentTeal.withOpacity(0.25),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.account_balance_wallet_rounded,
+                size: 52,
+                color: Colors.white.withOpacity(0.92),
+              ),
+            ),
+            const SizedBox(height: 28),
+            Text(
+              'No transactions yet',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : ColorPallete.primaryNavy,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Your payment records will appear here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? Colors.white54 : ColorPallete.hintTextColor,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

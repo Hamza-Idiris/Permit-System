@@ -59,24 +59,88 @@
 
 @layer components {
   .ui-card {
-    @apply bg-card-bg rounded-[14px] border border-border-color shadow-sm;
+    @apply bg-card-bg rounded-2xl border border-border-color shadow-sm transition-colors duration-300;
+  }
+
+  .ui-card-stat {
+    @apply bg-card-bg rounded-2xl border border-border-color shadow-sm p-5 transition-all duration-300 hover:shadow-md;
+  }
+
+  .ui-card-section {
+    @apply bg-card-bg rounded-2xl border border-border-color shadow-sm p-6 sm:p-7 transition-colors duration-300;
+  }
+
+  .ui-card-table {
+    @apply bg-card-bg rounded-2xl border border-border-color shadow-sm overflow-hidden transition-colors duration-300;
   }
 
   .app-container {
     @apply flex h-screen w-screen overflow-hidden gap-8 bg-bg-soft transition-colors duration-300;
   }
 
+  .sidebar-shell {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sidebar-shell--light {
+    background: #ffffff;
+    color: #0f172a;
+    border-right: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow:
+      4px 0 24px rgba(15, 23, 42, 0.04),
+      8px 0 32px rgba(59, 130, 246, 0.06);
+  }
+
+  .sidebar-shell--dark {
+    background:
+      radial-gradient(ellipse 120% 60% at 0% 0%, rgba(59, 130, 246, 0.22), transparent 55%),
+      linear-gradient(180deg, #0B1220 0%, #0a1628 100%);
+    color: #fff;
+    border-right: 1px solid rgba(96, 165, 250, 0.12);
+    box-shadow:
+      4px 0 24px rgba(15, 23, 42, 0.2),
+      8px 0 40px rgba(37, 99, 235, 0.1);
+  }
+
   .sidebar-navy {
-    @apply w-[300px] text-white shadow-2xl p-8 flex flex-col shrink-0 border-r border-white/5;
-    background: linear-gradient(to bottom, #001F3F, #00152e);
+    @apply w-[240px] p-0 flex flex-col shrink-0;
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow:
+      4px 0 24px rgba(15, 23, 42, 0.04),
+      0 0 28px rgba(59, 130, 246, 0.08);
+    border-right: 1px solid rgba(226, 232, 240, 0.9);
   }
 
   .sidebar-link {
-    @apply flex items-center gap-4 px-5 py-3.5 rounded-2xl text-sm font-semibold text-white/50 transition-all duration-300 no-underline hover:bg-white/10 hover:text-white;
+    @apply flex items-center gap-2.5 px-3 py-[9px] rounded-xl text-[12.5px] font-medium text-slate-500 transition-all duration-200 no-underline hover:bg-slate-50 hover:text-slate-800;
   }
 
   .sidebar-link.active {
-    @apply bg-white/10 text-white shadow-lg;
+    @apply bg-blue-500 text-white shadow-lg shadow-blue-500/30;
+  }
+
+  .sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .sidebar-scroll:hover {
+    scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
+  }
+
+  .sidebar-scroll:hover::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.4);
   }
 
   .blue-stat-card {
@@ -93,7 +157,7 @@
   }
 
   .premium-table-container {
-    @apply bg-card-bg rounded-[32px] border border-border-color overflow-hidden shadow-sm transition-all duration-300;
+    @apply bg-card-bg rounded-2xl border border-border-color overflow-hidden shadow-sm transition-all duration-300;
   }
 
   .premium-table {
@@ -152,11 +216,11 @@
   }
 
   .glass-card {
-    @apply bg-card-bg/80 backdrop-blur-md border border-white/5 shadow-sm;
+    @apply bg-card-bg border border-border-color shadow-sm;
   }
 
   .card-lift {
-    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-navy/5;
+    @apply transition-all duration-300 hover:shadow-md;
   }
 
   .glow-icon {

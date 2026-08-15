@@ -167,7 +167,7 @@ const DistrictBranchesManagement = () => {
                                 { label: 'Active Branches', value: branches.filter(b => b.isActive).length, icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
                                 { label: 'Districts Covered', value: [...new Set(branches.map(b => b.district?._id))].filter(Boolean).length, icon: MapPin, color: 'text-violet-500', bg: 'bg-violet-500/10' },
                             ].map(({ label, value, icon: Icon, color, bg }) => (
-                                <div key={label} className="bg-card-bg rounded-[24px] border border-border-color shadow-sm p-6 flex items-center gap-5 transition-colors duration-300">
+                                <div key={label} className="bg-card-bg rounded-2xl border border-border-color shadow-sm p-6 flex items-center gap-5 transition-colors duration-300">
                                     <div className={`w-12 h-12 rounded-2xl ${bg} flex items-center justify-center`}>
                                         <Icon size={22} className={color} />
                                     </div>
@@ -180,7 +180,7 @@ const DistrictBranchesManagement = () => {
                         </div>
 
                         {/* Main Table Card */}
-                        <div className="bg-card-bg rounded-[32px] border border-border-color shadow-sm p-8 space-y-6 transition-colors duration-300">
+                        <div className="bg-card-bg rounded-2xl border border-border-color shadow-sm p-8 space-y-6 transition-colors duration-300">
 
                             {/* Filters row */}
                             <div className="flex justify-between items-center pb-2">
