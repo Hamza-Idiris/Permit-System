@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/utils/constants.dart';
 import 'package:permit_app/src/services/permit_service.dart';
@@ -294,8 +295,11 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
     );
     bool isPerFloor = selectedTypeObj != null ? (selectedTypeObj['isPerFloor'] ?? false) : false;
 
-    if (_selectedPlotSize == 'Custom' &&
-        (_customWidthController.text.isEmpty || _customLengthController.text.isEmpty)) return false;
+    if (_selectedPlotSize == 'Custom') {
+      final w = double.tryParse(_customWidthController.text) ?? 0;
+      final l = double.tryParse(_customLengthController.text) ?? 0;
+      if (w < 1 || l < 1) return false;
+    }
     if (isPerFloor && _floorsController.text.isEmpty) return false;
     return true;
   }
@@ -823,9 +827,9 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
             if (_selectedPlotSize == 'Custom') ...[
               const SizedBox(height: 15),
               Row(children: [
-                Expanded(child: _buildTextField('Width (m)', _customWidthController, 'e.g. 15', isNumber: true)),
+                Expanded(child: _buildTextField('Width (m)', _customWidthController, 'e.g. 15', isNumber: true, minValue: 1)),
                 const SizedBox(width: 15),
-                Expanded(child: _buildTextField('Length (m)', _customLengthController, 'e.g. 30', isNumber: true)),
+                Expanded(child: _buildTextField('Length (m)', _customLengthController, 'e.g. 30', isNumber: true, minValue: 1)),
               ]),
             ],
 
@@ -970,17 +974,31 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
     ]);
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, String hint, {bool isNumber = false}) {
+  Widget _buildTextField(String label, TextEditingController controller, String hint, {bool isNumber = false, double? minValue}) {
+    String? errorText;
+    if (minValue != null && controller.text.trim().isNotEmpty) {
+      final value = double.tryParse(controller.text);
+      if (value == null || value < minValue) {
+        errorText = 'Must be ${minValue.toInt()} or greater';
+      }
+    }
+
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: ColorPallete.primaryNavy, fontSize: 14)),
       const SizedBox(height: 8),
       TextField(
         controller: controller,
-        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        keyboardType: isNumber
+            ? const TextInputType.numberWithOptions(decimal: true, signed: false)
+            : TextInputType.text,
+        inputFormatters: isNumber && minValue != null
+            ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
+            : null,
         onChanged: (_) => setState(() {}),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: const TextStyle(color: ColorPallete.hintTextColor),
+          errorText: errorText,
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),

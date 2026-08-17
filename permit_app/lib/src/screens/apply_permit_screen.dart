@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -222,7 +223,11 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
     );
     bool isPerFloor = selectedTypeObj != null ? (selectedTypeObj['isPerFloor'] ?? false) : false;
 
-    if (_selectedPlotSize == 'Custom' && (_customWidthController.text.isEmpty || _customLengthController.text.isEmpty)) return false;
+    if (_selectedPlotSize == 'Custom') {
+      final w = double.tryParse(_customWidthController.text) ?? 0;
+      final l = double.tryParse(_customLengthController.text) ?? 0;
+      if (w < 1 || l < 1) return false;
+    }
     if (isPerFloor && _floorsController.text.isEmpty) return false;
     if (_passportBytes == null || _landDocBytes == null) return false;
     return _totalFee > 0;
@@ -636,6 +641,7 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                               '15.0',
                               isDark,
                               isNumber: true,
+                              minValue: 1,
                             ),
                           ),
                           const SizedBox(width: 15),
@@ -646,6 +652,7 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                               '20.0',
                               isDark,
                               isNumber: true,
+                              minValue: 1,
                             ),
                           ),
                         ],
@@ -854,7 +861,15 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, String hint, bool isDark, {bool isNumber = false}) {
+  Widget _buildTextField(String label, TextEditingController controller, String hint, bool isDark, {bool isNumber = false, double? minValue}) {
+    String? errorText;
+    if (minValue != null && controller.text.trim().isNotEmpty) {
+      final value = double.tryParse(controller.text);
+      if (value == null || value < minValue) {
+        errorText = 'Must be ${minValue.toInt()} or greater';
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -872,8 +887,11 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
         TextField(
           controller: controller,
           keyboardType: isNumber
-              ? const TextInputType.numberWithOptions(decimal: true)
+              ? const TextInputType.numberWithOptions(decimal: true, signed: false)
               : TextInputType.text,
+          inputFormatters: isNumber && minValue != null
+              ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
+              : null,
           style: TextStyle(
             color: isDark ? Colors.white : ColorPallete.mainTextColor,
             fontWeight: FontWeight.w600,
@@ -884,6 +902,7 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
               color: isDark ? Colors.white24 : ColorPallete.hintTextColor,
               fontSize: 14,
             ),
+            errorText: errorText,
             filled: true,
             fillColor: isDark ? Colors.white.withOpacity(0.05) : ColorPallete.backgroundColor,
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),

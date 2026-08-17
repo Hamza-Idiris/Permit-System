@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -15,6 +16,21 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  static const Duration _requestTimeout = Duration(seconds: 45);
+
+  String _networkErrorMessage(Object error) {
+    if (error is TimeoutException) {
+      return 'Server is taking too long to respond. Check your internet and try again.';
+    }
+    if (error is SocketException) {
+      return 'Cannot reach the server. Check your internet connection.';
+    }
+    if (error is FormatException) {
+      return 'Unexpected server response. The API may be offline or misconfigured.';
+    }
+    return 'An error occurred. Please try again.';
+  }
+
   Future<Map<String, dynamic>> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
@@ -25,7 +41,7 @@ class AuthProvider extends ChangeNotifier {
         Uri.parse('${Constants.apiBaseUrl}/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(_requestTimeout);
 
       final data = jsonDecode(response.body);
 
@@ -60,13 +76,8 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return {'success': false, 'message': _errorMessage};
       }
-    } on SocketException {
-      _errorMessage = 'No Internet Connection or Server is Down.';
-      _isLoading = false;
-      notifyListeners();
-      return {'success': false, 'message': _errorMessage};
     } catch (e) {
-      _errorMessage = 'An error occurred. Please try again.';
+      _errorMessage = _networkErrorMessage(e);
       _isLoading = false;
       notifyListeners();
       return {'success': false, 'message': _errorMessage};
@@ -89,7 +100,7 @@ class AuthProvider extends ChangeNotifier {
           'password': password,
           'gender': 'Male', // Defaulting for now
         }),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(_requestTimeout);
 
       final data = jsonDecode(response.body);
 
@@ -103,13 +114,10 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return {'success': false, 'message': _errorMessage};
       }
-    } on SocketException {
-      _errorMessage = 'No Internet Connection or Server is Down.';
-      _isLoading = false;
-      notifyListeners();
-      return {'success': false, 'message': _errorMessage};
     } catch (e) {
-      _errorMessage = 'An error occurred during registration.';
+      _errorMessage = e is http.ClientException || e is SocketException || e is TimeoutException || e is FormatException
+          ? _networkErrorMessage(e)
+          : 'An error occurred during registration.';
       _isLoading = false;
       notifyListeners();
       return {'success': false, 'message': _errorMessage};
