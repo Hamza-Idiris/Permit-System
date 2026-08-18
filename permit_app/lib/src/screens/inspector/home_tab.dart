@@ -4,13 +4,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:permit_app/src/screens/scanned_permits_list_screen.dart';
-import 'package:permit_app/src/screens/verified_permit_page.dart';
+import 'package:permit_app/src/screens/inspector/scanned_permits_list_screen.dart';
+import 'package:permit_app/src/screens/inspector/verified_permit_page.dart';
 import 'package:permit_app/src/services/scan_history_service.dart';
-import 'package:permit_app/src/screens/profile_tab.dart';
-import 'package:permit_app/src/screens/staff_notifications_screen.dart';
+import 'package:permit_app/src/screens/shared/profile_tab.dart';
+import 'package:permit_app/src/screens/inspector/staff_notifications_screen.dart';
 import 'package:permit_app/src/providers/auth_provider.dart';
-import 'package:permit_app/src/screens/login_page.dart';
+import 'package:permit_app/src/screens/auth/login_page.dart';
 import 'package:permit_app/src/services/permit_service.dart';
 import 'package:permit_app/src/services/websocket_service.dart';
 

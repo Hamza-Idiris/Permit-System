@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:permit_app/src/screens/about_us_screen.dart';
-import 'package:permit_app/src/screens/edit_profile_screen.dart';
-import 'package:permit_app/src/screens/security_settings_screen.dart';
-import 'package:permit_app/src/screens/support_screen.dart';
+import 'package:permit_app/src/screens/shared/about_us_screen.dart';
+import 'package:permit_app/src/screens/shared/edit_profile_screen.dart';
+import 'package:permit_app/src/screens/shared/security_settings_screen.dart';
+import 'package:permit_app/src/screens/shared/support_screen.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:provider/provider.dart';

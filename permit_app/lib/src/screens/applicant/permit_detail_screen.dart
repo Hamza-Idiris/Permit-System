@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:permit_app/src/utils/colors.dart';
-import 'package:permit_app/src/screens/edit_application_screen.dart';
+import 'package:permit_app/src/screens/applicant/edit_application_screen.dart';
 import 'package:permit_app/src/widgets/civic_app_bar.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:permit_app/src/utils/file_saver.dart';

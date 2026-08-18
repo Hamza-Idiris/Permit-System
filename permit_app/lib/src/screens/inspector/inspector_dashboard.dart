@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
-import 'package:permit_app/src/screens/home_tab.dart';
-import 'package:permit_app/src/screens/scan_screen.dart';
+import 'package:permit_app/src/screens/inspector/home_tab.dart';
+import 'package:permit_app/src/screens/inspector/scan_screen.dart';
 import 'package:flutter/cupertino.dart'; // For CupertinoIcons if needed
 
 class InspectorDashboard extends StatefulWidget {

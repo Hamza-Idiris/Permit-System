@@ -3,7 +3,7 @@ import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:permit_app/src/screens/verified_permit_page.dart';
+import 'package:permit_app/src/screens/inspector/verified_permit_page.dart';
 
 class ScannedPermitsListScreen extends StatelessWidget {
   final String title;

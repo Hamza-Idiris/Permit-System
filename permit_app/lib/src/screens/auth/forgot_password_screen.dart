@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permit_app/src/utils/colors.dart';
-import 'package:permit_app/src/screens/login_page.dart';
+import 'package:permit_app/src/screens/auth/login_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:permit_app/src/utils/constants.dart';
 import 'dart:convert';

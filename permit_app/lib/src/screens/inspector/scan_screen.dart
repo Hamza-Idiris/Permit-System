@@ -9,7 +9,7 @@ import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:intl/intl.dart';
 import 'package:permit_app/src/services/scan_history_service.dart';
-import 'package:permit_app/src/screens/verified_permit_page.dart';
+import 'package:permit_app/src/screens/inspector/verified_permit_page.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});

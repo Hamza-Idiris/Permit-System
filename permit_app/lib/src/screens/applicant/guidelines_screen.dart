@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permit_app/src/utils/colors.dart';
-import 'package:permit_app/src/screens/apply_permit_screen.dart';
+import 'package:permit_app/src/screens/applicant/apply_permit_screen.dart';
 
 class GuidelinesScreen extends StatelessWidget {
   const GuidelinesScreen({super.key});

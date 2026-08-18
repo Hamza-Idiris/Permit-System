@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/services/permit_service.dart';
-import 'package:permit_app/src/screens/permit_detail_screen.dart';
+import 'package:permit_app/src/screens/applicant/permit_detail_screen.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:permit_app/src/services/websocket_service.dart';
 import 'package:permit_app/src/widgets/civic_app_bar.dart';

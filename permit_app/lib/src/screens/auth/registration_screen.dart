@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:provider/provider.dart';
 import 'package:permit_app/src/providers/auth_provider.dart';
-import 'package:permit_app/src/screens/login_page.dart';
+import 'package:permit_app/src/screens/auth/login_page.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});

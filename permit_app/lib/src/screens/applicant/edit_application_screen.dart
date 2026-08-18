@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:permit_app/src/utils/constants.dart';
 import 'package:permit_app/src/services/permit_service.dart';
-import 'package:permit_app/src/screens/track_applications_screen.dart';
+import 'package:permit_app/src/screens/applicant/track_applications_screen.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';

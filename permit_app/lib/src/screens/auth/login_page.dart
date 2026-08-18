@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:permit_app/src/utils/colors.dart';
 import 'package:provider/provider.dart';
 import 'package:permit_app/src/providers/auth_provider.dart';
-import 'package:permit_app/src/screens/inspector_dashboard.dart';
-import 'package:permit_app/src/screens/applicant_dashboard.dart';
-import 'package:permit_app/src/screens/registration_screen.dart';
-import 'package:permit_app/src/screens/forgot_password_screen.dart';
+import 'package:permit_app/src/screens/inspector/inspector_dashboard.dart';
+import 'package:permit_app/src/screens/applicant/applicant_dashboard.dart';
+import 'package:permit_app/src/screens/auth/registration_screen.dart';
+import 'package:permit_app/src/screens/auth/forgot_password_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,6 +17,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final FocusNode _passwordFocus = FocusNode();
   bool _obscurePassword = true;
   bool _submitted = false;
   String? _formError;
@@ -29,6 +30,7 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -179,11 +181,14 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 8),
                       TextField(
                         controller: _passwordController,
+                        focusNode: _passwordFocus,
                         obscureText: _obscurePassword,
-                        onChanged: (_) {
-                          _clearFormError();
-                          if (_submitted) setState(() {});
-                        },
+                        enableSuggestions: false,
+                        autocorrect: false,
+                        keyboardType: TextInputType.visiblePassword,
+                        smartDashesType: SmartDashesType.disabled,
+                        smartQuotesType: SmartQuotesType.disabled,
+                        onChanged: (_) => _clearFormError(),
                         decoration: _inputDecoration(
                           'Enter your password',
                           Icons.lock_outline_rounded,

@@ -2,7 +2,7 @@ import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:permit_app/src/screens/onboarding_screen.dart';
+import 'package:permit_app/src/screens/onboarding/onboarding_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:permit_app/src/providers/theme_provider.dart';
 import 'package:permit_app/src/providers/auth_provider.dart';
