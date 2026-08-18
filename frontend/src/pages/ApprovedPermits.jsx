@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
     Download,
-    CheckCircle,
     ArrowLeft,
     Eye,
     Settings2,
     MapPin,
-    Calendar,
-    Building2,
 } from 'lucide-react';
 import ConfigDrawer from '../components/ConfigDrawer';
 import Sidebar from '../components/Sidebar';
@@ -160,36 +157,6 @@ const ApprovedPermits = () => {
                             >
                                 <Download size={15} /> Export CSV
                             </button>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
-                        <div className="bg-card-bg border border-border-color rounded-2xl p-5 flex items-center gap-4">
-                            <div className="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                                <CheckCircle size={20} />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Total Approved</p>
-                                <p className="text-2xl font-black text-navy tracking-tight">{applications.length}</p>
-                            </div>
-                        </div>
-                        <div className="bg-card-bg border border-border-color rounded-2xl p-5 flex items-center gap-4">
-                            <div className="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                                <Building2 size={20} />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Showing</p>
-                                <p className="text-2xl font-black text-navy tracking-tight">{filtered.length}</p>
-                            </div>
-                        </div>
-                        <div className="bg-card-bg border border-border-color rounded-2xl p-5 flex items-center gap-4">
-                            <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                                <Calendar size={20} />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Archive</p>
-                                <p className="text-sm font-black text-navy mt-1">Approved only</p>
-                            </div>
                         </div>
                     </div>
 
