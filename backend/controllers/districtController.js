@@ -6,7 +6,8 @@ const User = require('../models/User');
 // @access  Private
 const getDistricts = async (req, res) => {
     try {
-        const districts = await District.find().populate('supervisor', 'fullName role');
+        const query = req.user?.role === 'superadmin' ? {} : { isActive: { $ne: false } };
+        const districts = await District.find(query).populate('supervisor', 'fullName role');
         res.status(200).json({ success: true, count: districts.length, data: districts });
     } catch (error) {
         res.status(500).json({ success: true, message: error.message });
@@ -47,7 +48,7 @@ const createDistrict = async (req, res) => {
 // @access  Private/Admin
 const updateDistrict = async (req, res) => {
     try {
-        const { name, code, supervisor, description } = req.body;
+        const { name, code, supervisor, description, isActive } = req.body;
         let district = await District.findById(req.params.id);
 
         if (!district) {
@@ -62,12 +63,19 @@ const updateDistrict = async (req, res) => {
             // For now we just update the new one.
         }
 
-        district = await District.findByIdAndUpdate(req.params.id, {
+        const updatePayload = {
             name,
             code,
             supervisor: supervisor || null,
-            description
-        }, { new: true, runValidators: true });
+        };
+        if (description !== undefined) {
+            updatePayload.description = description;
+        }
+        if (typeof isActive === 'boolean') {
+            updatePayload.isActive = isActive;
+        }
+
+        district = await District.findByIdAndUpdate(req.params.id, updatePayload, { new: true, runValidators: true });
 
         res.status(200).json({ success: true, data: district });
     } catch (error) {

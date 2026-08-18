@@ -41,7 +41,11 @@ const scopeFilter = (req, base = {}) => {
   }
 
   if (req.query.status && req.query.status !== 'all') {
-    filter.status = req.query.status;
+    if (req.query.status === 'Pending') {
+      filter.status = { $in: ['Pending', 'In Review'] };
+    } else {
+      filter.status = req.query.status;
+    }
   }
 
   if (req.query.requestType && req.query.requestType !== 'all') {

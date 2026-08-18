@@ -13,6 +13,7 @@ import 'package:permit_app/src/screens/guidelines_screen.dart';
 import 'package:permit_app/src/screens/support_screen.dart';
 import 'package:permit_app/src/screens/transaction_history_screen.dart';
 import 'package:permit_app/src/screens/permit_detail_screen.dart';
+import 'package:permit_app/src/screens/notification_message_screen.dart';
 import 'package:permit_app/src/screens/renew_permit_screen.dart';
 import 'package:permit_app/src/services/permit_service.dart';
 import 'package:permit_app/src/services/websocket_service.dart';
@@ -691,6 +692,34 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                               if (mounted) await _fetchNotifications();
                             }
 
+                            if (!mounted) return;
+
+                            final title = type == 'Applied'
+                                ? 'Request Sent Correctly'
+                                : (type == 'Approved'
+                                    ? 'Request Been Approved'
+                                    : (type == 'Success'
+                                        ? 'Permit Approved / Submitted'
+                                        : (type == 'Returned'
+                                            ? 'Action Required / Returned'
+                                            : (type == 'Rejected' ? 'Permit Request Rejected' : 'System Update'))));
+                            final timeLabel = _formatRelativeTime(createdAt);
+
+                            final isStaffOrAdminMessage = type == 'Broadcast' || type == 'Info';
+                            if (isStaffOrAdminMessage) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => NotificationMessageScreen(
+                                    title: title,
+                                    message: message,
+                                    timeLabel: timeLabel,
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+
                             final matchingPermit = await _resolvePermitFromNotification(notif, message);
 
                             if (!mounted) return;
@@ -707,15 +736,16 @@ class _ApplicantDashboardState extends State<ApplicantDashboard> {
                                 _fetchNotifications();
                               }
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Opening applications list...'),
-                                  duration: Duration(seconds: 1),
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => NotificationMessageScreen(
+                                    title: title,
+                                    message: message,
+                                    timeLabel: timeLabel,
+                                  ),
                                 ),
                               );
-                              setState(() {
-                                _selectedIndex = 1;
-                              });
                             }
                           },
                         ),

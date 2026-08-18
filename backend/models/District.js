@@ -22,6 +22,10 @@ const districtSchema = new mongoose.Schema({
     description: {
         type: String,
         default: ''
+    },
+    isActive: {
+        type: Boolean,
+        default: true
     }
 }, {
     timestamps: true

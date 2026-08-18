@@ -23,9 +23,8 @@ const RANGE_OPTIONS = [
   { value: 'custom', label: 'Custom' },
 ];
 
-const STATUS_OPTIONS = ['all', 'Pending', 'In Review', 'Approved', 'Returned'];
+const STATUS_OPTIONS = ['all', 'Pending', 'Approved', 'Returned'];
 const REQUEST_TYPES = ['all', 'New Construction', 'Renovation', 'Renew'];
-const PAYMENT_STATUS_OPTIONS = ['all', 'Paid', 'Pending', 'Free'];
 
 const requestTypeLabel = (rt) => {
   if (!rt || rt === 'New Construction') return 'New';
@@ -67,7 +66,6 @@ const Reports = () => {
   const [status, setStatus] = useState('all');
   const [requestType, setRequestType] = useState('all');
   const [buildingCategory, setBuildingCategory] = useState('all');
-  const [paymentStatus, setPaymentStatus] = useState('all');
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -136,9 +134,6 @@ const Reports = () => {
       if (buildingCategory && buildingCategory !== 'all') {
         params.buildingCategory = buildingCategory;
       }
-      if (paymentStatus && paymentStatus !== 'all') {
-        params.paymentStatus = paymentStatus;
-      }
 
       const res = await axios.get('http://localhost:5000/api/analytics/reports', {
         headers: { Authorization: `Bearer ${token || localStorage.getItem('token')}` },
@@ -156,7 +151,7 @@ const Reports = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, range, startDate, endDate, district, status, requestType, buildingCategory, paymentStatus, search, apiSection, isAdmin]);
+  }, [token, range, startDate, endDate, district, status, requestType, buildingCategory, search, apiSection, isAdmin]);
 
   useEffect(() => {
     fetchReports();
@@ -391,15 +386,6 @@ const Reports = () => {
                     <option value="all">All Categories</option>
                     {categoryOptions.map((c) => (
                       <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-1.5">Payment</label>
-                  <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} className={`w-full ${selectCls}`}>
-                    {PAYMENT_STATUS_OPTIONS.map((s) => (
-                      <option key={s} value={s}>{s === 'all' ? 'All Payments' : s}</option>
                     ))}
                   </select>
                 </div>
@@ -928,11 +914,7 @@ const Reports = () => {
                         </thead>
                         <tbody className="divide-y divide-border-color">
                           {byPaymentStatus.map((p, i) => (
-                            <tr
-                              key={i}
-                              className="hover:bg-table-header-bg/30 cursor-pointer"
-                              onClick={() => setPaymentStatus(p.paymentStatus || 'all')}
-                            >
+                            <tr key={i} className="hover:bg-table-header-bg/30">
                               <td className="py-3 px-4 text-sm font-bold text-navy">{p.paymentStatus || '—'}</td>
                               <td className="py-3 px-4 text-sm text-text-muted font-medium">{p.count}</td>
                               <td className="py-3 px-4 text-sm font-bold text-navy">{formatCurrency(p.revenue)}</td>

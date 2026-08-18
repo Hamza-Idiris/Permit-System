@@ -6,7 +6,7 @@ import {
     Search, MapPin, MoreVertical,
     Bell, HelpCircle, ChevronDown,
     Plus, Edit3, Trash2, AlertTriangle,
-    X, Info, User, Check, Layers
+    X, Info, User, Check, Layers, Ban, Power
 } from 'lucide-react';
 import LoadingScreen from '../components/LoadingScreen';
 import TopHeader from '../components/TopHeader';
@@ -25,11 +25,11 @@ const DistrictManagement = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDistrict, setEditingDistrict] = useState(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+    const [toggleStatusTarget, setToggleStatusTarget] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
         code: '',
-        supervisor: '',
-        description: ''
+        supervisor: ''
     });
 
     const fetchData = async () => {
@@ -77,7 +77,7 @@ const DistrictManagement = () => {
             }
             setIsModalOpen(false);
             setEditingDistrict(null);
-            setFormData({ name: '', code: '', supervisor: '', description: '' });
+            setFormData({ name: '', code: '', supervisor: '' });
             fetchData();
         } catch (err) {
             alert(err.response?.data?.message || 'Hawlgalku wuu fashilmay');
@@ -97,6 +97,26 @@ const DistrictManagement = () => {
         } catch (err) {
             alert('Delete failed');
             setDeleteConfirmId(null);
+        }
+    };
+
+    const confirmToggleStatus = async () => {
+        if (!toggleStatusTarget) return;
+        const nextActive = toggleStatusTarget.isActive === false;
+        try {
+            const config = { headers: { 'Authorization': `Bearer ${token}` } };
+            await axios.put(`http://localhost:5000/api/districts/${toggleStatusTarget._id}`, {
+                name: toggleStatusTarget.name,
+                code: toggleStatusTarget.code,
+                supervisor: toggleStatusTarget.supervisor?._id || '',
+                description: toggleStatusTarget.description || '',
+                isActive: nextActive
+            }, config);
+            setToggleStatusTarget(null);
+            fetchData();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to update district status');
+            setToggleStatusTarget(null);
         }
     };
 
@@ -132,7 +152,7 @@ const DistrictManagement = () => {
                             <button
                                 onClick={() => {
                                     setEditingDistrict(null);
-                                    setFormData({ name: '', code: '', supervisor: '', description: '' });
+                                    setFormData({ name: '', code: '', supervisor: '' });
                                     setIsModalOpen(true);
                                 }}
                                 className="bg-navy hover:brightness-110 text-white font-black text-[13px] px-6 py-4 rounded-2xl flex items-center gap-2 shadow-lg transition-all transform active:scale-95"
@@ -153,7 +173,7 @@ const DistrictManagement = () => {
                                     </div>
                                 </div>
                                 <div className="text-[11px] font-black text-text-muted uppercase tracking-[0.15em] transition-colors">
-                                    SHOWING {filteredDistricts.length} ACTIVE DISTRICTS
+                                    SHOWING {filteredDistricts.length} DISTRICTS
                                 </div>
                             </div>
 
@@ -165,7 +185,7 @@ const DistrictManagement = () => {
                                             <th className="pb-5 pt-3 pr-6 min-w-[200px]">District Name</th>
                                             <th className="pb-5 pt-3 px-6 text-center">Code</th>
                                             <th className="pb-5 pt-3 px-6 min-w-[220px]">Assigned Supervisor</th>
-                                            <th className="pb-5 pt-3 px-6 min-w-[300px]">Physical Boundary Description</th>
+                                            <th className="pb-5 pt-3 px-6 min-w-[140px]">Status</th>
                                             <th className="pb-5 pt-3 text-right w-24"></th>
                                         </tr>
                                     </thead>
@@ -218,21 +238,36 @@ const DistrictManagement = () => {
                                                     </td>
 
                                                     <td className="py-6 px-6">
-                                                        <p className="text-[13px] font-bold text-text-muted line-clamp-1 max-w-[400px] transition-colors">
-                                                            {d.description || 'No description provided.'}
-                                                        </p>
+                                                        {d.isActive !== false ? (
+                                                            <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                                                                Active
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-rose-600 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                                                                Inactive
+                                                            </span>
+                                                        )}
                                                     </td>
 
                                                     <td className="py-6 text-right">
                                                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                                            <button
+                                                                onClick={() => setToggleStatusTarget(d)}
+                                                                className={`p-2 rounded-xl transition-all ${d.isActive !== false
+                                                                    ? 'text-text-muted hover:text-rose-500 hover:bg-rose-500/10'
+                                                                    : 'text-text-muted hover:text-emerald-500 hover:bg-emerald-500/10'
+                                                                }`}
+                                                                title={d.isActive !== false ? 'Deactivate district' : 'Activate district'}
+                                                            >
+                                                                {d.isActive !== false ? <Ban size={15} /> : <Power size={15} />}
+                                                            </button>
                                                             <button
                                                                 onClick={() => {
                                                                     setEditingDistrict(d);
                                                                     setFormData({
                                                                         name: d.name,
                                                                         code: d.code,
-                                                                        supervisor: d.supervisor?._id || '',
-                                                                        description: d.description || ''
+                                                                        supervisor: d.supervisor?._id || ''
                                                                     });
                                                                     setIsModalOpen(true);
                                                                 }}
@@ -316,18 +351,6 @@ const DistrictManagement = () => {
                                     </div>
                                 </div>
 
-                                {/* Boundaries */}
-                                <div className="space-y-2">
-                                    <label className="text-[11px] font-black text-text-muted uppercase tracking-widest pl-1 transition-colors">Detailed Physical Boundary Description (Textual)</label>
-                                    <textarea
-                                        placeholder="District Boundaries"
-                                        rows={4}
-                                        className="w-full bg-table-header-bg border-none rounded-xl px-5 py-3.5 text-[14px] font-black text-navy placeholder:text-text-muted/50 focus:ring-2 focus:ring-navy/5 transition-all outline-none resize-none"
-                                        value={formData.description}
-                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    />
-                                </div>
-
                                 {/* Supervisor */}
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-black text-text-muted uppercase tracking-widest pl-1 transition-colors">
@@ -367,6 +390,49 @@ const DistrictManagement = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Activate / Deactivate Confirmation Modal */}
+            {toggleStatusTarget && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-navy/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+                    <div className="bg-card-bg rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-600 animate-in zoom-in-95 duration-300">
+                        <div className="p-8">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${toggleStatusTarget.isActive !== false
+                                    ? 'bg-rose-500/10 text-rose-500'
+                                    : 'bg-emerald-500/10 text-emerald-500'
+                                }`}>
+                                    {toggleStatusTarget.isActive !== false ? <Ban size={24} /> : <Power size={24} />}
+                                </div>
+                                <h3 className="text-xl font-black text-navy tracking-tight transition-colors">
+                                    {toggleStatusTarget.isActive !== false ? 'Deactivate District' : 'Activate District'}
+                                </h3>
+                            </div>
+                            <p className="text-[14px] text-text-muted font-bold leading-relaxed transition-colors">
+                                {toggleStatusTarget.isActive !== false
+                                    ? 'Are you sure you want to deactivate this district? It will no longer appear for new applications.'
+                                    : 'Are you sure you want to activate this district? It will appear again for new applications.'}
+                            </p>
+                        </div>
+                        <div className="px-8 py-6 border-t border-border-color flex justify-end gap-3 bg-navy/5 transition-colors duration-300">
+                            <button
+                                onClick={() => setToggleStatusTarget(null)}
+                                className="px-6 py-2.5 text-[13px] font-black text-text-muted hover:text-navy transition-colors uppercase tracking-widest"
+                            >
+                                No
+                            </button>
+                            <button
+                                onClick={confirmToggleStatus}
+                                className={`px-8 py-2.5 text-white text-[13px] font-black rounded-xl shadow-lg transition-all active:scale-95 uppercase tracking-widest ${toggleStatusTarget.isActive !== false
+                                    ? 'bg-rose-500 hover:brightness-110 shadow-rose-500/20'
+                                    : 'bg-emerald-500 hover:brightness-110 shadow-emerald-500/20'
+                                }`}
+                            >
+                                {toggleStatusTarget.isActive !== false ? 'Yes, Deactivate' : 'Yes, Activate'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

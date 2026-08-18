@@ -43,7 +43,7 @@ const SuperAdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [range, setRange] = useState('30'); // today, 7, 30, custom
+    const [range, setRange] = useState('30'); // today, 7, 30, all, custom
     const [isRangeOpen, setIsRangeOpen] = useState(false);
     const [customDates, setCustomDates] = useState({ start: '', end: '' });
     const [graphView, setGraphView] = useState('month'); // month, year
@@ -154,7 +154,7 @@ const SuperAdminDashboard = () => {
                                     className="flex items-center gap-2 bg-card-bg border border-border-color px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-muted hover:text-navy hover:bg-table-header-bg transition-all shadow-sm"
                                 >
                                     <Calendar size={15} />
-                                    {range === 'today' ? 'Today' : range === '7' ? 'Last 7 Days' : 'Last 30 Days'}
+                                    {range === 'today' ? 'Today' : range === '7' ? 'Last 7 Days' : range === 'all' ? 'All Time' : range === 'custom' ? 'Custom Range' : 'Last 30 Days'}
                                 </button>
 
                                 {isRangeOpen && (
@@ -163,6 +163,7 @@ const SuperAdminDashboard = () => {
                                             { label: 'Today', value: 'today' },
                                             { label: 'Last 7 Days', value: '7' },
                                             { label: 'Last 30 Days', value: '30' },
+                                            { label: 'All Time', value: 'all' },
                                             { label: 'Custom Range', value: 'custom' }
                                         ].map((opt) => (
                                             <button
