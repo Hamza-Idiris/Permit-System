@@ -15,6 +15,10 @@ const renovationTypeSchema = new mongoose.Schema({
     isPerFloor: {
         type: Boolean,
         default: false
+    },
+    isActive: {
+        type: Boolean,
+        default: true
     }
 }, {
     timestamps: true

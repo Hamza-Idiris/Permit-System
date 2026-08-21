@@ -1,6 +1,20 @@
 const District = require('../models/District');
 const User = require('../models/User');
 
+const supervisorIdValue = (value) => {
+    if (!value) return '';
+    return value._id ? value._id.toString() : value.toString();
+};
+
+const findOtherDistrictForSupervisor = async (supervisorId, excludeDistrictId) => {
+    if (!supervisorId) return null;
+    const query = { supervisor: supervisorId };
+    if (excludeDistrictId) {
+        query._id = { $ne: excludeDistrictId };
+    }
+    return District.findOne(query);
+};
+
 // @desc    Get all districts
 // @route   GET /api/districts
 // @access  Private
@@ -19,10 +33,23 @@ const getDistricts = async (req, res) => {
 // @access  Private/Admin
 const createDistrict = async (req, res) => {
     try {
-        const { name, code, supervisor, description } = req.body;
+        const { name, code, supervisor, description, forceReassign } = req.body;
 
         if (!supervisor) {
             return res.status(400).json({ success: false, message: 'District supervisor is required' });
+        }
+
+        const alreadyManaging = await findOtherDistrictForSupervisor(supervisor);
+        if (alreadyManaging) {
+            if (!forceReassign) {
+                return res.status(400).json({
+                    success: false,
+                    message: `This supervisor already manages ${alreadyManaging.name}. One supervisor can manage only one district.`
+                });
+            }
+            alreadyManaging.supervisor = null;
+            await alreadyManaging.save();
+            await User.findByIdAndUpdate(supervisor, { district: '' });
         }
 
         const district = await District.create({
@@ -32,13 +59,16 @@ const createDistrict = async (req, res) => {
             description
         });
 
-        // If supervisor is assigned, update user's district field
-        if (supervisor) {
-            await User.findByIdAndUpdate(supervisor, { district: name });
-        }
+        await User.findByIdAndUpdate(supervisor, { district: name });
 
         res.status(201).json({ success: true, data: district });
     } catch (error) {
+        if (error.code === 11000 && error.keyPattern?.supervisor) {
+            return res.status(400).json({
+                success: false,
+                message: 'This supervisor already manages another district. One supervisor can manage only one district.'
+            });
+        }
         res.status(400).json({ success: false, message: error.message });
     }
 };
@@ -55,12 +85,22 @@ const updateDistrict = async (req, res) => {
             return res.status(404).json({ success: false, message: 'District not found' });
         }
 
-        // Handle supervisor change
-        if (supervisor && supervisor !== district.supervisor?.toString()) {
-            // Update new supervisor
-            await User.findByIdAndUpdate(supervisor, { district: name });
-            // Optionally reset old supervisor's district? 
-            // For now we just update the new one.
+        const nextSupervisorId = supervisor ? supervisorIdValue(supervisor) : '';
+        const currentSupervisorId = supervisorIdValue(district.supervisor);
+
+        if (nextSupervisorId && nextSupervisorId !== currentSupervisorId) {
+            const alreadyManaging = await findOtherDistrictForSupervisor(nextSupervisorId, district._id);
+            if (alreadyManaging) {
+                return res.status(400).json({
+                    success: false,
+                    message: `This supervisor already manages ${alreadyManaging.name}. One supervisor can manage only one district.`
+                });
+            }
+
+            await User.findByIdAndUpdate(nextSupervisorId, { district: name || district.name });
+            if (currentSupervisorId) {
+                await User.findByIdAndUpdate(currentSupervisorId, { district: '' });
+            }
         }
 
         const updatePayload = {
@@ -79,6 +119,12 @@ const updateDistrict = async (req, res) => {
 
         res.status(200).json({ success: true, data: district });
     } catch (error) {
+        if (error.code === 11000 && error.keyPattern?.supervisor) {
+            return res.status(400).json({
+                success: false,
+                message: 'This supervisor already manages another district. One supervisor can manage only one district.'
+            });
+        }
         res.status(400).json({ success: false, message: error.message });
     }
 };
@@ -108,9 +154,69 @@ const deleteDistrict = async (req, res) => {
     }
 };
 
+// @desc    Swap supervisors between two districts
+// @route   POST /api/districts/switch-supervisors
+// @access  Private/Admin
+const switchSupervisors = async (req, res) => {
+    try {
+        const { districtAId, districtBId } = req.body;
+        if (!districtAId || !districtBId || districtAId === districtBId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Select two different districts to switch supervisors.'
+            });
+        }
+
+        const [districtA, districtB] = await Promise.all([
+            District.findById(districtAId),
+            District.findById(districtBId)
+        ]);
+
+        if (!districtA || !districtB) {
+            return res.status(404).json({ success: false, message: 'District not found' });
+        }
+
+        const supervisorA = districtA.supervisor;
+        const supervisorB = districtB.supervisor;
+
+        if (!supervisorA && !supervisorB) {
+            return res.status(400).json({
+                success: false,
+                message: 'Neither district has a supervisor to switch.'
+            });
+        }
+
+        districtA.supervisor = supervisorB || null;
+        districtB.supervisor = supervisorA || null;
+        await districtA.save();
+        await districtB.save();
+
+        if (supervisorA) {
+            await User.findByIdAndUpdate(supervisorA, { district: districtB.name });
+        }
+        if (supervisorB) {
+            await User.findByIdAndUpdate(supervisorB, { district: districtA.name });
+        }
+
+        const [updatedA, updatedB] = await Promise.all([
+            District.findById(districtA._id).populate('supervisor', 'fullName role'),
+            District.findById(districtB._id).populate('supervisor', 'fullName role')
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: `Supervisors switched between ${districtA.name} and ${districtB.name}.`,
+            data: { districtA: updatedA, districtB: updatedB }
+        });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     getDistricts,
     createDistrict,
     updateDistrict,
-    deleteDistrict
+    deleteDistrict,
+    switchSupervisors
 };

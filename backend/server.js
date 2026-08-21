@@ -115,8 +115,14 @@ if (!process.env.JWT_SECRET) {
 // Connect to database and start server
 mongoose
   .connect(MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log('MongoDB Connected');
+    try {
+      const District = require('./models/District');
+      await District.collection.dropIndex('supervisor_1');
+    } catch (_) {
+      /* index may already be gone */
+    }
     const server = http.createServer(app);
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);

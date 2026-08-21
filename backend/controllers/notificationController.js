@@ -79,6 +79,28 @@ const archiveNotification = async (req, res) => {
   }
 };
 
+const unarchiveNotification = async (req, res) => {
+  try {
+    const notification = await Notification.findById(req.params.id);
+
+    if (!notification) {
+      return res.status(404).json({ success: false, message: 'Notification not found.' });
+    }
+
+    if (notification.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ success: false, message: 'Not authorized.' });
+    }
+
+    notification.isArchived = false;
+    await notification.save();
+
+    res.status(200).json({ success: true, data: notification });
+  } catch (error) {
+    console.error('Unarchive Error:', error);
+    res.status(500).json({ success: false, message: 'Server Error unarchiving.' });
+  }
+};
+
 const getUnreadNotificationsCount = async (req, res) => {
   try {
     const count = await Notification.countDocuments({ user: req.user._id, isRead: false, isArchived: false });
@@ -174,10 +196,20 @@ const sendNotification = async (req, res) => {
       return res.status(404).json({ success: false, message: 'No matching recipients found' });
     }
 
+    const trimmedMessage = String(message).trim();
+    const isStaffSender = req.user.role === 'staff';
+    const senderName = req.user.fullName || '';
+    const senderDistrict = req.user.district || '';
+
     const docs = recipients.map(u => ({
       user: u._id,
-      message: String(message).trim(),
-      type: 'Broadcast'
+      message: trimmedMessage,
+      type: 'Broadcast',
+      ...(isStaffSender ? {
+        sender: req.user._id,
+        senderName,
+        senderDistrict,
+      } : {}),
     }));
 
     await Notification.insertMany(docs);
@@ -187,7 +219,11 @@ const sendNotification = async (req, res) => {
       for (const u of recipients) {
         sendToUser(u._id, {
           type: 'NOTIFICATION_CREATED',
-          payload: { message: String(message).trim(), type: 'Broadcast' }
+          payload: {
+            message: trimmedMessage,
+            type: 'Broadcast',
+            ...(isStaffSender ? { senderName, senderDistrict } : {}),
+          }
         });
       }
     } catch (_) { /* ignore */ }
@@ -207,6 +243,7 @@ module.exports = {
   getNotifications,
   markAsRead,
   archiveNotification,
+  unarchiveNotification,
   getUnreadNotificationsCount,
   deleteNotification,
   sendNotification

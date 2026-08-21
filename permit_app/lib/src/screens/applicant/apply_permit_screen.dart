@@ -412,7 +412,13 @@ class _ApplyPermitScreenState extends State<ApplyPermitScreen> {
                 if (isProcessing) ...[
                   const CircularProgressIndicator(color: ColorPallete.primaryNavy),
                   const SizedBox(height: 24),
-                  const Text('Processing Payment...', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Waiting for WaafiPay…', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Approve the payment PIN on your phone if asked.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
                 ] else ...[
                   Icon(
                     phoneController.text.startsWith('61') ? Icons.phone_android : (phoneController.text.startsWith('62') ? Icons.cell_wifi : Icons.account_balance_wallet),

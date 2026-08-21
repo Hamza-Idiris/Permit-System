@@ -374,7 +374,7 @@ class PermitService {
           if (token != null) 'Authorization': 'Bearer $token',
         },
         body: jsonEncode(bodyMap),
-      ).timeout(const Duration(seconds: 50));
+      ).timeout(const Duration(seconds: 90));
 
       final data = jsonDecode(response.body);
 

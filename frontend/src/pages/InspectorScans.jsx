@@ -31,8 +31,8 @@ const InspectorScans = () => {
   const [banner, setBanner] = useState(null);
 
   const breadcrumbs = isAdmin
-    ? ['Admin', 'Inspector Scans']
-    : ['Staff', 'Inspector Scans'];
+    ? ['Admin', 'All Scans']
+    : ['Staff', 'All Scans'];
 
   const fetchStats = useCallback(async () => {
     if (!token) return;
@@ -119,7 +119,7 @@ const InspectorScans = () => {
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           <div className="max-w-7xl mx-auto space-y-8">
             <div>
-              <h1 className="text-3xl font-black text-navy tracking-tight mb-1">Inspector Scans</h1>
+              <h1 className="text-3xl font-black text-navy tracking-tight mb-1">All Scans</h1>
               <p className="text-sm text-text-muted font-bold">
                 {isAdmin
                   ? 'System-wide QR scan activity and inspector performance.'
@@ -222,7 +222,7 @@ const InspectorScans = () => {
                     {!inspectorStats.length && (
                       <tr>
                         <td colSpan={isAdmin ? 7 : 6} className="py-12 text-center text-text-muted text-sm font-medium">
-                          No inspector scan data for this range.
+                          No scan data for this range.
                         </td>
                       </tr>
                     )}

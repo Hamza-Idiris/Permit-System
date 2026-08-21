@@ -71,6 +71,7 @@ const UserManagement = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [toggleStatusTarget, setToggleStatusTarget] = useState(null);
+  const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -102,6 +103,7 @@ const UserManagement = () => {
   useEffect(() => {
     fetchData();
     setFormData({ fullName: '', email: '', phone: '', password: '', role: mode, district: '', gender: 'Male' });
+    setFormError('');
     setSearchTerm('');
     setFilterByDistrict('');
     setFilterByGender('');
@@ -109,9 +111,10 @@ const UserManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormError('');
     const phoneRegex = /^(60|61|62|63|65|66|67|68|69|70|71|77|90)\d{7}$/;
     if (!phoneRegex.test(formData.phone)) {
-      alert('unexisting Number');
+      setFormError('Invalid phone number format. Must be a 9-digit Somali number (e.g. 61XXXXXXX)');
       return;
     }
 
@@ -130,9 +133,10 @@ const UserManagement = () => {
       setIsModalOpen(false);
       setEditingUser(null);
       setFormData({ fullName: '', email: '', phone: '', password: '', role: mode, district: '', gender: 'Male' });
+      setFormError('');
       fetchData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Hawlgalku wuu fashilmay');
+      setFormError(err.response?.data?.message || 'Operation failed');
     }
   };
 
@@ -227,6 +231,7 @@ const UserManagement = () => {
                   onClick={() => {
                     setEditingUser(null);
                     setFormData({ fullName: '', email: '', phone: '', password: '', role: mode, district: '', gender: 'Male' });
+                    setFormError('');
                     setIsModalOpen(true);
                   }}
                   className="bg-navy hover:brightness-110 text-white font-black text-[13px] px-6 py-4 rounded-2xl flex items-center gap-2 shadow-lg transition-all duration-300 transform active:scale-95"
@@ -248,19 +253,20 @@ const UserManagement = () => {
                       <button
                         onClick={() => setIsFilterDropdownOpen(prev => prev === 'district' ? null : 'district')}
                         className={`flex items-center gap-2 px-5 py-3 rounded-xl border font-bold text-[12px] transition-all ${filterByDistrict
-                          ? 'bg-navy text-white border-navy'
-                          : 'bg-table-header-bg text-text-main border-border-color hover:brightness-95'
+                          ? 'bg-navy/10 border-navy/20 text-navy'
+                          : 'bg-table-header-bg border-border-color text-text-muted hover:text-navy'
                           }`}
                       >
                         <MapPin size={14} />
-                        <span>{filterByDistrict ? `District: ${filterByDistrict}` : 'District'}</span>
+                        <span>{filterByDistrict || 'All Districts'}</span>
                         <ChevronDown size={14} />
                       </button>
+
                       {isFilterDropdownOpen === 'district' && (
-                        <div className="absolute left-0 mt-2 w-56 bg-card-bg border border-border-color rounded-2xl shadow-xl z-50 p-2 max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2">
+                        <div className="absolute top-full left-0 mt-2 w-56 bg-card-bg rounded-2xl border border-border-color shadow-xl z-20 p-2 text-left">
                           <button
                             onClick={() => { setFilterByDistrict(''); setIsFilterDropdownOpen(null); }}
-                            className="w-full text-left px-4 py-2 text-[12px] font-bold text-text-main hover:bg-table-header-bg/50 rounded-xl transition-colors"
+                            className={`w-full text-left px-4 py-2.5 rounded-xl font-bold text-[13px] transition-colors ${!filterByDistrict ? 'bg-navy/10 text-navy' : 'text-text-muted hover:bg-table-header-bg'}`}
                           >
                             All Districts
                           </button>
@@ -268,7 +274,7 @@ const UserManagement = () => {
                             <button
                               key={d._id}
                               onClick={() => { setFilterByDistrict(d.name); setIsFilterDropdownOpen(null); }}
-                              className="w-full text-left px-4 py-2 text-[12px] font-bold text-text-main hover:bg-table-header-bg/50 rounded-xl transition-colors"
+                              className={`w-full text-left px-4 py-2.5 rounded-xl font-bold text-[13px] transition-colors ${filterByDistrict === d.name ? 'bg-navy/10 text-navy' : 'text-text-muted hover:bg-table-header-bg'}`}
                             >
                               {d.name}
                             </button>
@@ -277,6 +283,44 @@ const UserManagement = () => {
                       )}
                     </div>
                   )}
+
+                  {/* Gender Filter */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsFilterDropdownOpen(prev => prev === 'gender' ? null : 'gender')}
+                      className={`flex items-center gap-2 px-5 py-3 rounded-xl border font-bold text-[12px] transition-all ${filterByGender
+                        ? 'bg-navy/10 border-navy/20 text-navy'
+                        : 'bg-table-header-bg border-border-color text-text-muted hover:text-navy'
+                        }`}
+                    >
+                      <Filter size={14} />
+                      <span>{filterByGender || 'All Genders'}</span>
+                      <ChevronDown size={14} />
+                    </button>
+
+                    {isFilterDropdownOpen === 'gender' && (
+                      <div className="absolute top-full left-0 mt-2 w-48 bg-card-bg rounded-2xl border border-border-color shadow-xl z-20 p-2 text-left">
+                        <button
+                          onClick={() => { setFilterByGender(''); setIsFilterDropdownOpen(null); }}
+                          className={`w-full text-left px-4 py-2.5 rounded-xl font-bold text-[13px] transition-colors ${!filterByGender ? 'bg-navy/10 text-navy' : 'text-text-muted hover:bg-table-header-bg'}`}
+                        >
+                          All Genders
+                        </button>
+                        <button
+                          onClick={() => { setFilterByGender('Male'); setIsFilterDropdownOpen(null); }}
+                          className={`w-full text-left px-4 py-2.5 rounded-xl font-bold text-[13px] transition-colors ${filterByGender === 'Male' ? 'bg-navy/10 text-navy' : 'text-text-muted hover:bg-table-header-bg'}`}
+                        >
+                          Male
+                        </button>
+                        <button
+                          onClick={() => { setFilterByGender('Female'); setIsFilterDropdownOpen(null); }}
+                          className={`w-full text-left px-4 py-2.5 rounded-xl font-bold text-[13px] transition-colors ${filterByGender === 'Female' ? 'bg-navy/10 text-navy' : 'text-text-muted hover:bg-table-header-bg'}`}
+                        >
+                          Female
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Configure View Button */}
                   <div className="relative">
@@ -290,9 +334,9 @@ const UserManagement = () => {
                   </div>
 
                   {/* Clear button if active */}
-                  {(filterByDistrict || searchTerm) && (
+                  {(filterByDistrict || searchTerm || filterByGender) && (
                     <button
-                      onClick={() => { setFilterByDistrict(''); setSearchTerm(''); }}
+                      onClick={() => { setFilterByDistrict(''); setSearchTerm(''); setFilterByGender(''); }}
                       className="text-[12px] font-bold text-rose-500 hover:text-rose-600 px-3 py-2 transition-colors"
                     >
                       Reset Filters
@@ -340,18 +384,12 @@ const UserManagement = () => {
                         const dotColor = isActive ? 'bg-[#10B981]' : 'bg-[#EF4444]';
                         const textColor = isActive ? 'text-[#10B981]' : 'text-[#EF4444]';
 
-                        const avatarThemes = darkMode ? [
+                        const avatarThemes = [
                           { bg: 'bg-indigo-500/20', text: 'text-indigo-400' },
                           { bg: 'bg-emerald-500/20', text: 'text-emerald-400' },
                           { bg: 'bg-amber-500/20', text: 'text-amber-400' },
                           { bg: 'bg-rose-500/20', text: 'text-rose-400' },
                           { bg: 'bg-blue-500/20', text: 'text-blue-400' }
-                        ] : [
-                          { bg: 'bg-[#E0F2FE]', text: 'text-[#0369A1]' },
-                          { bg: 'bg-[#EEF2F6]', text: 'text-[#334155]' },
-                          { bg: 'bg-[#FFEDD5]', text: 'text-[#C2410C]' },
-                          { bg: 'bg-[#F0FDF4]', text: 'text-[#15803D]' },
-                          { bg: 'bg-[#FAF5FF]', text: 'text-[#7E22CE]' }
                         ];
                         const theme = avatarThemes[idx % avatarThemes.length];
 
@@ -434,6 +472,7 @@ const UserManagement = () => {
                                         district: u.district || '',
                                         gender: u.gender || 'Male'
                                       });
+                                      setFormError('');
                                       setIsModalOpen(true);
                                     }}
                                     className="p-2 text-text-muted hover:text-navy hover:bg-table-header-bg rounded-xl transition-colors"
@@ -475,7 +514,13 @@ const UserManagement = () => {
             </div>
 
             <form onSubmit={handleSubmit}>
-              <div className="p-8 space-y-8">
+              <div className="p-8 space-y-6">
+                {formError && (
+                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-[13px] font-bold flex items-center gap-3 animate-in fade-in">
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-x-6 gap-y-6">
                   {/* Name */}
                   <div className="space-y-2">

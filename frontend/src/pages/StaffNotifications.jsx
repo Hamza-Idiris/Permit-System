@@ -11,7 +11,7 @@ import {
     XCircle, RefreshCw, Trash2, ChevronDown,
     Filter, MoreVertical, Calendar, ArrowRight,
     AlertCircle, FileText, CheckCircle, Info, Archive,
-    History
+    History, Undo2
 } from 'lucide-react';
 
 const API = 'http://localhost:5000/api/notifications';
@@ -178,6 +178,21 @@ const StaffNotifications = () => {
             if (notif && !notif.isRead) setUnreadCount(prev => Math.max(0, prev - 1));
         } catch (err) {
             console.error('Archive failed', err);
+        } finally {
+            setActionId(null);
+        }
+    };
+
+    const unarchiveNotif = async (e, id) => {
+        e.stopPropagation();
+        setActionId(id);
+        try {
+            await axios.put(`${API}/${id}/unarchive`, {}, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setNotifications(prev => prev.filter(n => n._id !== id));
+        } catch (err) {
+            console.error('Unarchive failed', err);
         } finally {
             setActionId(null);
         }
@@ -369,6 +384,12 @@ const StaffNotifications = () => {
                                                     <p className={`text-[13.5px] leading-relaxed transition-colors ${notif.isRead ? 'text-text-muted font-bold' : 'text-text-main font-bold'}`}>
                                                         <MessageText message={notif.message} />
                                                     </p>
+                                                    {notif.senderName && (
+                                                        <p className="mt-1.5 text-[11px] font-black text-navy/80">
+                                                            From {notif.senderName}
+                                                            {notif.senderDistrict ? ` · ${notif.senderDistrict}` : ''}
+                                                        </p>
+                                                    )}
                                                 </div>
 
                                                 {/* Actions */}
@@ -377,8 +398,17 @@ const StaffNotifications = () => {
                                                         <div className="w-2.5 h-2.5 rounded-full bg-navy animate-pulse shadow-[0_0_10px_rgba(0,31,63,0.3)]" title="Unread" />
                                                     )}
 
-                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                                                        {!showArchived && (
+                                                    <div className={`flex items-center gap-1 transition-all ${showArchived ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0'}`}>
+                                                        {showArchived ? (
+                                                            <button
+                                                                onClick={(e) => unarchiveNotif(e, notif._id)}
+                                                                disabled={actionId === notif._id}
+                                                                className="p-2.5 text-navy hover:bg-navy/10 rounded-xl transition-all"
+                                                                title="Unarchive"
+                                                            >
+                                                                {actionId === notif._id ? <RefreshCw size={14} className="animate-spin" /> : <Undo2 size={14} />}
+                                                            </button>
+                                                        ) : (
                                                             <button
                                                                 onClick={(e) => archiveNotif(e, notif._id)}
                                                                 disabled={actionId === notif._id}

@@ -273,6 +273,12 @@ const Notifications = () => {
                       <p className={`text-[14px] leading-snug font-bold ${notif.isRead ? 'text-text-muted' : 'text-text-main'}`}>
                         <MessageText message={notif.message} />
                       </p>
+                      {notif.senderName && (
+                        <p className="mt-1 text-[11px] font-black text-navy/80">
+                          From {notif.senderName}
+                          {notif.senderDistrict ? ` · ${notif.senderDistrict}` : ''}
+                        </p>
+                      )}
                       <p className="mt-1.5 text-[12px] text-text-muted font-black opacity-60">
                         {getRelativeTime(notif.createdAt)}
                       </p>

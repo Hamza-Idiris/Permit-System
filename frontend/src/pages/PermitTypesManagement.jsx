@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import {
   Plus, Edit3, Trash2, Home, CheckCircle2, XCircle, X,
-  Layers, Wrench, RefreshCw, Percent, Building2
+  Layers, Wrench, RefreshCw, Percent, Building2, AlertCircle, Power, Ban
 } from 'lucide-react';
 import TopHeader from '../components/TopHeader';
 import Sidebar from '../components/Sidebar';
@@ -19,7 +19,7 @@ const TYPE_TABS = [
 
 const REQUEST_TYPES = ['New Construction', 'Renovation', 'Renew'];
 
-const emptyTypeForm = { name: '', feeMultiplier: '', isPerFloor: false };
+const emptyTypeForm = { name: '', feeMultiplier: '', isPerFloor: false, isActive: true };
 const emptyDiscountForm = {
   name: '',
   scope: 'type',
@@ -43,10 +43,12 @@ const PermitTypesManagement = () => {
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
   const [editingType, setEditingType] = useState(null);
   const [typeForm, setTypeForm] = useState(emptyTypeForm);
+  const [typeModalError, setTypeModalError] = useState('');
 
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [editingDiscount, setEditingDiscount] = useState(null);
   const [discountForm, setDiscountForm] = useState(emptyDiscountForm);
+  const [discountModalError, setDiscountModalError] = useState('');
 
   const config = { headers: { Authorization: `Bearer ${token}` } };
   const currentTypeTab = TYPE_TABS.find((t) => t.id === activeTab);
@@ -56,7 +58,7 @@ const PermitTypesManagement = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get(`${API}/${endpoint}`);
+      const res = await axios.get(`${API}/${endpoint}?includeInactive=true`);
       setTypes(res.data.data || []);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch types');
@@ -86,12 +88,14 @@ const PermitTypesManagement = () => {
   }, [activeTab, isDiscounts, currentTypeTab, fetchTypes, fetchDiscounts]);
 
   const openTypeModal = (type = null) => {
+    setTypeModalError('');
     if (type) {
       setEditingType(type);
       setTypeForm({
         name: type.name,
         feeMultiplier: type.feeMultiplier,
         isPerFloor: !!type.isPerFloor,
+        isActive: type.isActive !== false,
       });
     } else {
       setEditingType(null);
@@ -102,9 +106,10 @@ const PermitTypesManagement = () => {
 
   const submitType = async (e) => {
     e.preventDefault();
+    setTypeModalError('');
     const multiplier = Number(typeForm.feeMultiplier);
     if (multiplier < 0) {
-      alert('Fee Multiplier must be a positive value.');
+      setTypeModalError('Fee Multiplier must be a positive value.');
       return;
     }
     try {
@@ -112,6 +117,7 @@ const PermitTypesManagement = () => {
         name: typeForm.name,
         feeMultiplier: multiplier,
         isPerFloor: typeForm.isPerFloor,
+        isActive: typeForm.isActive,
       };
       if (editingType) {
         await axios.put(`${API}/${currentTypeTab.endpoint}/${editingType._id}`, payload, config);
@@ -121,7 +127,17 @@ const PermitTypesManagement = () => {
       setIsTypeModalOpen(false);
       fetchTypes(currentTypeTab.endpoint);
     } catch (err) {
-      alert(err.response?.data?.message || 'Action failed');
+      setTypeModalError(err.response?.data?.message || 'Action failed');
+    }
+  };
+
+  const toggleTypeStatus = async (type) => {
+    try {
+      const nextActive = type.isActive === false ? true : false;
+      await axios.put(`${API}/${currentTypeTab.endpoint}/${type._id}`, { isActive: nextActive }, config);
+      fetchTypes(currentTypeTab.endpoint);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update type status');
     }
   };
 
@@ -136,6 +152,7 @@ const PermitTypesManagement = () => {
   };
 
   const openDiscountModal = (d = null) => {
+    setDiscountModalError('');
     if (d) {
       setEditingDiscount(d);
       setDiscountForm({
@@ -155,6 +172,7 @@ const PermitTypesManagement = () => {
 
   const submitDiscount = async (e) => {
     e.preventDefault();
+    setDiscountModalError('');
     try {
       const payload = {
         name: discountForm.name,
@@ -172,7 +190,7 @@ const PermitTypesManagement = () => {
       setIsDiscountModalOpen(false);
       fetchDiscounts();
     } catch (err) {
-      alert(err.response?.data?.message || 'Action failed');
+      setDiscountModalError(err.response?.data?.message || 'Action failed');
     }
   };
 
@@ -300,19 +318,20 @@ const PermitTypesManagement = () => {
                         <th className="pb-5 pt-3 px-6">Name</th>
                         <th className="pb-5 pt-3 px-6 text-center">Fee Multiplier</th>
                         <th className="pb-5 pt-3 px-6 text-center">Per Floor?</th>
-                        <th className="pb-5 pt-3 text-right pr-6 w-24">Actions</th>
+                        <th className="pb-5 pt-3 px-6 text-center">Status</th>
+                        <th className="pb-5 pt-3 text-right pr-6 w-28">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-color">
                       {loading ? (
                         <tr>
-                          <td colSpan="4" className="py-16 text-center text-text-muted italic font-semibold text-[14px]">
+                          <td colSpan="5" className="py-16 text-center text-text-muted italic font-semibold text-[14px]">
                             Loading...
                           </td>
                         </tr>
                       ) : filteredTypes.length === 0 ? (
                         <tr>
-                          <td colSpan="4" className="py-16 text-center text-text-muted italic font-semibold text-[14px]">
+                          <td colSpan="5" className="py-16 text-center text-text-muted italic font-semibold text-[14px]">
                             No types found. Click Add to create one.
                           </td>
                         </tr>
@@ -339,17 +358,35 @@ const PermitTypesManagement = () => {
                                 <span className="text-[14px] font-black text-text-muted opacity-40">—</span>
                               )}
                             </td>
+                            <td className="py-5 px-6 text-center">
+                              <span className={`text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-xl inline-flex items-center gap-1.5 ${type.isActive !== false ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
+                                <span className={`w-2 h-2 rounded-full ${type.isActive !== false ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                                {type.isActive !== false ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
                             <td className="py-5 pr-6 text-right">
                               <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
                                 <button
+                                  onClick={() => toggleTypeStatus(type)}
+                                  className={`p-2 rounded-xl transition-all ${type.isActive !== false
+                                    ? 'text-text-muted hover:text-rose-500 hover:bg-rose-500/10'
+                                    : 'text-text-muted hover:text-emerald-500 hover:bg-emerald-500/10'
+                                    }`}
+                                  title={type.isActive !== false ? 'Deactivate type' : 'Activate type'}
+                                >
+                                  {type.isActive !== false ? <Ban size={15} /> : <Power size={15} />}
+                                </button>
+                                <button
                                   onClick={() => openTypeModal(type)}
                                   className="p-2 text-text-muted hover:text-navy hover:bg-table-header-bg rounded-xl transition-all"
+                                  title="Edit type"
                                 >
                                   <Edit3 size={15} />
                                 </button>
                                 <button
                                   onClick={() => deleteType(type._id)}
                                   className="p-2 text-text-muted hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+                                  title="Delete type"
                                 >
                                   <Trash2 size={15} />
                                 </button>
@@ -478,6 +515,12 @@ const PermitTypesManagement = () => {
             </div>
             <form onSubmit={submitType}>
               <div className="p-8 space-y-5">
+                {typeModalError && (
+                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-[13px] font-bold flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <span>{typeModalError}</span>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <label className="text-[11px] font-black text-text-muted uppercase tracking-widest pl-1">Name *</label>
                   <input
@@ -514,6 +557,18 @@ const PermitTypesManagement = () => {
                     <span className="text-[13px] font-black text-navy">Enable</span>
                   </label>
                 </div>
+                <div className="flex items-center gap-4 p-4 bg-table-header-bg rounded-xl">
+                  <span className="text-[12px] font-black text-text-muted uppercase tracking-widest flex-1">Active Status</span>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={typeForm.isActive}
+                      onChange={(e) => setTypeForm({ ...typeForm, isActive: e.target.checked })}
+                      className="w-4 h-4 rounded accent-navy"
+                    />
+                    <span className="text-[13px] font-black text-navy">{typeForm.isActive ? 'Active' : 'Inactive'}</span>
+                  </label>
+                </div>
               </div>
               <div className="px-8 py-6 border-t border-border-color flex justify-end gap-3 bg-navy/5">
                 <button type="button" onClick={() => setIsTypeModalOpen(false)} className="px-6 py-2.5 text-[13px] font-black text-text-muted hover:text-navy uppercase tracking-widest">
@@ -547,6 +602,12 @@ const PermitTypesManagement = () => {
             </div>
             <form onSubmit={submitDiscount}>
               <div className="p-8 space-y-5">
+                {discountModalError && (
+                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-[13px] font-bold flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <span>{discountModalError}</span>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <label className="text-[11px] font-black text-text-muted uppercase tracking-widest pl-1">Name *</label>
                   <input

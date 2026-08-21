@@ -3,7 +3,8 @@ const {
     getDistricts,
     createDistrict,
     updateDistrict,
-    deleteDistrict
+    deleteDistrict,
+    switchSupervisors
 } = require('../controllers/districtController');
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 
@@ -15,6 +16,7 @@ router.get('/', getDistricts);
 
 router.use(authorizeRoles('superadmin'));
 router.post('/', createDistrict);
+router.post('/switch-supervisors', switchSupervisors);
 router.put('/:id', updateDistrict);
 router.delete('/:id', deleteDistrict);
 

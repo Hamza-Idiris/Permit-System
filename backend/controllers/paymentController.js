@@ -1,11 +1,36 @@
 const crypto = require('crypto');
 const Transaction = require('../models/Transaction');
 const PermitApplication = require('../models/PermitApplication');
-const Notification = require('../models/Notification'); // Used for sending notifications if payment successful
+const Notification = require('../models/Notification');
+
+const WAAFI_URL = process.env.PAYMENT_URL || 'https://api.waafipay.net/asm';
+const WAAFI_TIMEOUT_MS = 90000;
+
+const toWaafiAccountNo = (phone) => {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.startsWith('252')) return digits;
+  if (digits.startsWith('0')) return `252${digits.slice(1)}`;
+  return `252${digits}`;
+};
+
+const formatWaafiTimestamp = () =>
+  new Date().toISOString().replace('T', ' ').substring(0, 19);
+
+const isWaafiSuccess = (data) => {
+  if (!data || typeof data !== 'object') return false;
+  const code = String(data.responseCode ?? data.errorCode ?? '');
+  const msg = String(data.responseMsg ?? data.responseMessage ?? '').toUpperCase();
+  return (
+    code === '2001' ||
+    code === '2000' ||
+    code === '0' ||
+    msg.includes('RCS_SUCCESS') ||
+    msg === 'SUCCESS'
+  );
+};
 
 const processWaafiPay = async (req, res) => {
   try {
-    // Also extract applicationId and mockStatus if passed
     const { phone, amount, applicationId, mockStatus } = req.body;
 
     if (!phone || !amount) {
@@ -14,49 +39,45 @@ const processWaafiPay = async (req, res) => {
 
     const referenceId = crypto.randomBytes(4).toString('hex');
     const invoiceId = crypto.randomInt(1000000, 9999999).toString();
+    const requestId = `${Date.now()}${crypto.randomInt(1000, 9999)}`;
     const timestamp = new Date().toISOString();
+    const accountNo = toWaafiAccountNo(phone);
 
-    // PAYMENT_MODE takes strict priority:
-    //   - 'live'    → always real gateway (even in development)
-    //   - 'sandbox' → always mocked
-    //   - (not set) → fallback to NODE_ENV check
-    const isSandboxMode = process.env.PAYMENT_MODE === 'live'
-      ? false
-      : process.env.PAYMENT_MODE === 'sandbox' || process.env.NODE_ENV === 'development';
+    if (accountNo.length < 12) {
+      return res.status(400).json({
+        success: false,
+        message: 'Enter a valid Hormuud / Waafi number, e.g. 61XXXXXXX',
+      });
+    }
 
-    console.log(`[PAYMENT] Mode: ${isSandboxMode ? 'SANDBOX' : 'LIVE'} (PAYMENT_MODE=${process.env.PAYMENT_MODE}, NODE_ENV=${process.env.NODE_ENV})`);
+    // Sandbox only when explicitly requested. Online payment is live by default.
+    const isSandboxMode = process.env.PAYMENT_MODE === 'sandbox';
+
+    console.log(`[PAYMENT] Mode: ${isSandboxMode ? 'SANDBOX' : 'LIVE'} (PAYMENT_MODE=${process.env.PAYMENT_MODE || 'unset'})`);
 
     if (isSandboxMode) {
       console.log(`[PAYMENT-SANDBOX] Initiating sandbox payment for phone: ${phone}, amount: ${amount}`);
 
-      // Simulate API delay of 1.5 seconds
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // Determine successful/failed response for sandbox
-      // Success criteria: phone starts with '25261000' OR mockStatus is not 'FAILED'
-      const isTestSuccess = (phone.startsWith('25261000') || mockStatus !== 'FAILED') && mockStatus !== 'FAILED';
-
+      const isTestSuccess = mockStatus !== 'FAILED';
       const transactionId = `MOCK_TXN_${Date.now()}`;
 
-      // Create Database Audit Log / Transaction
-      const transaction = await Transaction.create({
+      await Transaction.create({
         applicationRef: applicationId || null,
-        transactionId: transactionId,
-        phone: phone,
-        amount: amount,
+        transactionId,
+        phone,
+        amount,
         status: isTestSuccess ? 'Success' : 'Failed',
         paymentMode: 'Sandbox',
         auditLog: [{
           event: isTestSuccess ? 'SANDBOX_PAYMENT_SUCCESS' : 'SANDBOX_PAYMENT_FAILED',
           timestamp: new Date(),
-          details: { mockStatus, referenceId, invoiceId }
-        }]
+          details: { mockStatus, referenceId, invoiceId },
+        }],
       });
 
       if (isTestSuccess) {
-        console.log(`[PAYMENT-SANDBOX] Payment SUCCESS for transaction ${transactionId}`);
-
-        // Update application if ID provided
         if (applicationId) {
           const app = await PermitApplication.findById(applicationId);
           if (app) {
@@ -64,20 +85,17 @@ const processWaafiPay = async (req, res) => {
             if (amount && !isNaN(parseFloat(amount))) {
               app.formData.totalFee = parseFloat(amount);
             }
-            // Unlock application review gate or set pending if needed
             if (app.status === 'Pending') {
               app.status = 'In Review';
             }
             await app.save();
-            console.log(`[PAYMENT-SANDBOX] Application ${applicationId} synced successfully with totalFee ${amount}.`);
 
-            // Trigger automatic notification (optional)
             if (app.user) {
               await Notification.create({
                 user: app.user,
                 message: `Your application fee has been paid. (${transactionId})`,
                 type: 'Success',
-                relatedId: app._id
+                relatedId: app._id,
               });
             }
           }
@@ -91,116 +109,153 @@ const processWaafiPay = async (req, res) => {
             transactionId,
             amount,
             timestamp,
-            paymentMode: 'sandbox'
-          }
-        });
-      } else {
-        console.log(`[PAYMENT-SANDBOX] Payment FAILED for transaction ${transactionId}`);
-        return res.status(400).json({
-          success: false,
-          message: 'Sandbox payment failed due to mock configuration.',
-          data: {
-            status: 'FAILED',
-            transactionId,
-            amount,
-            timestamp,
-            paymentMode: 'sandbox'
-          }
+            paymentMode: 'sandbox',
+          },
         });
       }
+
+      return res.status(400).json({
+        success: false,
+        message: 'Sandbox payment failed due to mock configuration.',
+        data: {
+          status: 'FAILED',
+          transactionId,
+          amount,
+          timestamp,
+          paymentMode: 'sandbox',
+        },
+      });
     }
 
-    // LIVE MODE LOGIC
-    console.log(`[PAYMENT-LIVE] Initiating live payment for phone: ${phone}, amount: ${amount}`);
+    const parsedAmount = Number(parseFloat(amount).toFixed(2));
+    console.log(`[PAYMENT-LIVE] Waafi purchase accountNo=${accountNo} amount=${parsedAmount}`);
 
-    // Fallback to exactly what the older WaafiPay payload was
     const waafiPayload = {
-      "schemaVersion": "1.0",
-      "requestId": "10111331034",
-      "timestamp": timestamp.replace('T', ' ').substring(0, 19),
-      "channelName": "WEB",
-      "serviceName": "API_PURCHASE",
-      "serviceParams": {
-        "merchantUid": "M0910291",
-        "apiUserId": "1000416",
-        "apiKey": process.env.LIVE_PAYMENT_API_KEY || "API-675418888AHX",
-        "paymentMethod": "mwallet_account",
-        "payerInfo": {
-          "accountNo": `252${phone}`
+      schemaVersion: '1.0',
+      requestId,
+      timestamp: formatWaafiTimestamp(),
+      channelName: 'WEB',
+      serviceName: 'API_PURCHASE',
+      serviceParams: {
+        merchantUid: process.env.WAAFI_MERCHANT_UID || 'M0910291',
+        apiUserId: process.env.WAAFI_API_USER_ID || '1000416',
+        apiKey: process.env.LIVE_PAYMENT_API_KEY || 'API-675418888AHX',
+        paymentMethod: 'mwallet_account',
+        payerInfo: {
+          accountNo,
         },
-        "transactionInfo": {
-          "referenceId": referenceId,
-          "invoiceId": invoiceId,
-          "amount": parseFloat(amount),
-          "currency": "USD",
-          "description": "Permit Application Fee"
-        }
-      }
+        transactionInfo: {
+          referenceId,
+          invoiceId,
+          amount: parsedAmount,
+          currency: 'USD',
+          description: 'Permit Application Fee',
+        },
+      },
     };
 
-    console.log("Sending WaafiPay request:", JSON.stringify(waafiPayload));
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(), WAAFI_TIMEOUT_MS);
 
-    const waafiUrl = process.env.PAYMENT_URL || 'https://api.waafipay.net/asm';
-    const response = await fetch(waafiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(waafiPayload)
+    let response;
+    try {
+      response = await fetch(WAAFI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(waafiPayload),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(abortTimer);
+    }
+
+    const rawBody = await response.text();
+    let data = {};
+    try {
+      data = rawBody ? JSON.parse(rawBody) : {};
+    } catch {
+      console.error('WaafiPay returned non-JSON:', rawBody.slice(0, 500));
+      return res.status(502).json({
+        success: false,
+        message: 'WaafiPay returned an unexpected response. Try again.',
+      });
+    }
+
+    console.log('WaafiPay Response:', {
+      httpStatus: response.status,
+      responseCode: data.responseCode,
+      responseMsg: data.responseMsg || data.responseMessage,
+      errorCode: data.errorCode,
+      transactionId: data.transactionId,
     });
 
-    const data = await response.json();
-    console.log("WaafiPay Response:", data);
-
-    // Initial Live Transaction tracking
     const liveTransactionId = data.transactionId || `LIVE_TXN_${Date.now()}`;
-    const isLiveSuccess = data.responseCode === '2001' || data.responseMsg === 'RCS_SUCCESS' || data.errorCode === '0' || data.responseCode === '2000';
+    const liveSuccess = isWaafiSuccess(data);
 
     await Transaction.create({
       applicationRef: applicationId || null,
       transactionId: liveTransactionId,
-      phone: phone,
-      amount: amount,
-      status: isLiveSuccess ? 'Pending' : 'Failed', // "Pending" ussd push
+      phone: accountNo,
+      amount: parsedAmount,
+      status: liveSuccess ? 'Success' : 'Failed',
       paymentMode: 'Live',
       auditLog: [{
-        event: 'LIVE_PAYMENT_INITIATED',
+        event: liveSuccess ? 'LIVE_PAYMENT_SUCCESS' : 'LIVE_PAYMENT_FAILED',
         timestamp: new Date(),
-        details: { responseCode: data.responseCode, responseMsg: data.responseMsg }
-      }]
+        details: {
+          responseCode: data.responseCode,
+          responseMsg: data.responseMsg || data.responseMessage,
+          errorCode: data.errorCode,
+        },
+      }],
     });
 
-    if (isLiveSuccess) {
-      console.log(`[PAYMENT-LIVE] USSD push sent successfully. Transaction: ${liveTransactionId}`);
-
-      // Match pre-sandbox behaviour: mark application as Paid after USSD push initiates.
-      // (The real deduction happens after the user enters their PIN on device - WaafiPay handles that separately.)
+    if (liveSuccess) {
       if (applicationId) {
         const app = await PermitApplication.findById(applicationId);
         if (app) {
           app.paymentStatus = 'Paid';
-          if (amount && !isNaN(parseFloat(amount))) {
-            app.formData.totalFee = parseFloat(amount);
-          }
+          app.formData.totalFee = parsedAmount;
           if (app.status === 'Pending') {
             app.status = 'In Review';
           }
           await app.save();
-          console.log(`[PAYMENT-LIVE] Application ${applicationId} marked as Paid & In Review with totalFee ${amount}.`);
+
+          if (app.user) {
+            await Notification.create({
+              user: app.user,
+              message: `Your application fee has been paid. (${liveTransactionId})`,
+              type: 'Success',
+              relatedId: app._id,
+            });
+          }
         }
       }
 
-      return res.status(200).json({ success: true, message: 'Payment initiated successfully, check your phone.', data });
-    } else {
-      return res.status(400).json({ success: false, message: data.responseMsg || 'Payment failed', data });
+      return res.status(200).json({
+        success: true,
+        message: 'Payment successful. Check your Waafi / Hormuud phone for the PIN prompt if it appears.',
+        data,
+      });
     }
 
+    return res.status(400).json({
+      success: false,
+      message: data.responseMsg || data.responseMessage || data.errorMsg || 'WaafiPay payment failed',
+      data,
+    });
   } catch (error) {
+    if (error.name === 'AbortError') {
+      return res.status(504).json({
+        success: false,
+        message: 'WaafiPay took too long. Approve the PIN on your phone and try again.',
+      });
+    }
     console.error('WaafiPay error:', error);
     res.status(500).json({ success: false, message: 'Payment processing error' });
   }
 };
 
 module.exports = {
-  processWaafiPay
+  processWaafiPay,
 };

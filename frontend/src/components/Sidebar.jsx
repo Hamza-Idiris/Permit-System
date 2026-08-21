@@ -31,7 +31,7 @@ const ADMIN_NAV = [
   { icon: FileText, label: 'All Applications', to: '/admin/all-permits' },
   { icon: FilePlus2, label: 'New Application', to: '/admin/new-application' },
   { icon: QrCode, label: 'Verify Permit', to: '/admin/verify' },
-  { icon: ScanLine, label: 'Inspector Scans', to: '/admin/inspector-scans' },
+  { icon: ScanLine, label: 'All Scans', to: '/admin/inspector-scans' },
   { icon: Bell, label: 'Notifications', to: '/admin/notifications', badge: true },
   { icon: BarChart3, label: 'Reports', to: '/admin/reports' },
 ];

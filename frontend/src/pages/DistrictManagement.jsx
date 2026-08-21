@@ -6,7 +6,7 @@ import {
     Search, MapPin, MoreVertical,
     Bell, HelpCircle, ChevronDown,
     Plus, Edit3, Trash2, AlertTriangle,
-    X, Info, User, Check, Layers, Ban, Power
+    X, Info, User, Check, Layers, Ban, Power, ArrowLeftRight
 } from 'lucide-react';
 import LoadingScreen from '../components/LoadingScreen';
 import TopHeader from '../components/TopHeader';
@@ -26,6 +26,8 @@ const DistrictManagement = () => {
     const [editingDistrict, setEditingDistrict] = useState(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const [toggleStatusTarget, setToggleStatusTarget] = useState(null);
+    const [feedbackDialog, setFeedbackDialog] = useState(null);
+    const [swapDialog, setSwapDialog] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
         code: '',
@@ -47,7 +49,6 @@ const DistrictManagement = () => {
             }
 
             if (staffRes.data.success) {
-                // Only staff/inspectors can be supervisors
                 const personnel = staffRes.data.data.filter(u => u.role === 'staff');
                 setAvailableStaff(personnel);
             }
@@ -65,7 +66,29 @@ const DistrictManagement = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.supervisor) {
-            alert('Please select a staff supervisor for this district.');
+            setFeedbackDialog({
+                title: 'Supervisor Required',
+                message: 'Please select a staff supervisor for this district.'
+            });
+            return;
+        }
+
+        const alreadyAssigned = districts.find((d) => {
+            const supervisorId = d.supervisor?._id || d.supervisor;
+            if (!supervisorId || supervisorId !== formData.supervisor) return false;
+            if (editingDistrict && d._id === editingDistrict._id) return false;
+            return true;
+        });
+        if (alreadyAssigned) {
+            setFormData({ ...formData, supervisor: '' });
+            setFeedbackDialog({
+                title: 'Supervisor Already Assigned',
+                message: `This supervisor manages ${alreadyAssigned.name}. Switch supervisors between these districts?`,
+                canSwitch: true,
+                supervisorId: formData.supervisor,
+                otherDistrictId: alreadyAssigned._id,
+                otherDistrictName: alreadyAssigned.name
+            });
             return;
         }
         try {
@@ -80,7 +103,11 @@ const DistrictManagement = () => {
             setFormData({ name: '', code: '', supervisor: '' });
             fetchData();
         } catch (err) {
-            alert(err.response?.data?.message || 'Hawlgalku wuu fashilmay');
+            setFormData({ ...formData, supervisor: '' });
+            setFeedbackDialog({
+                title: 'Cannot Save District',
+                message: err.response?.data?.message || 'This supervisor already manages another district.'
+            });
         }
     };
 
@@ -95,8 +122,11 @@ const DistrictManagement = () => {
             setDeleteConfirmId(null);
             fetchData();
         } catch (err) {
-            alert('Delete failed');
             setDeleteConfirmId(null);
+            setFeedbackDialog({
+                title: 'Delete Failed',
+                message: err.response?.data?.message || 'Could not delete this district. Please try again.'
+            });
         }
     };
 
@@ -115,8 +145,67 @@ const DistrictManagement = () => {
             setToggleStatusTarget(null);
             fetchData();
         } catch (err) {
-            alert(err.response?.data?.message || 'Failed to update district status');
             setToggleStatusTarget(null);
+            setFeedbackDialog({
+                title: 'Update Failed',
+                message: err.response?.data?.message || 'Failed to update district status.'
+            });
+        }
+    };
+
+    const confirmSwitchFromDialog = async () => {
+        if (!feedbackDialog?.canSwitch) return;
+        const config = { headers: { 'Authorization': `Bearer ${token}` } };
+        try {
+            if (editingDistrict) {
+                await axios.post('http://localhost:5000/api/districts/switch-supervisors', {
+                    districtAId: editingDistrict._id,
+                    districtBId: feedbackDialog.otherDistrictId
+                }, config);
+            } else {
+                if (!formData.name.trim() || !formData.code.trim()) {
+                    setFeedbackDialog({
+                        title: 'District Details Required',
+                        message: 'Enter the district name and code first, then switch this supervisor here.'
+                    });
+                    return;
+                }
+                await axios.post('http://localhost:5000/api/districts', {
+                    name: formData.name,
+                    code: formData.code,
+                    supervisor: feedbackDialog.supervisorId,
+                    forceReassign: true
+                }, config);
+            }
+            setFeedbackDialog(null);
+            setIsModalOpen(false);
+            setEditingDistrict(null);
+            setFormData({ name: '', code: '', supervisor: '' });
+            fetchData();
+        } catch (err) {
+            setFeedbackDialog({
+                title: 'Switch Failed',
+                message: err.response?.data?.message || 'Could not switch supervisors.'
+            });
+        }
+    };
+
+    const confirmSwapDistricts = async () => {
+        if (!swapDialog?.fromDistrict || !swapDialog?.otherId) return;
+        try {
+            const config = { headers: { 'Authorization': `Bearer ${token}` } };
+            await axios.post('http://localhost:5000/api/districts/switch-supervisors', {
+                districtAId: swapDialog.fromDistrict._id,
+                districtBId: swapDialog.otherId
+            }, config);
+            setSwapDialog(null);
+            fetchData();
+        } catch (err) {
+            setSwapDialog(null);
+            setFeedbackDialog({
+                title: 'Switch Failed',
+                message: err.response?.data?.message || 'Could not switch supervisors.'
+            });
         }
     };
 
@@ -124,6 +213,16 @@ const DistrictManagement = () => {
         d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.code.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const districtManagedBySupervisor = (staffId) => {
+        if (!staffId) return null;
+        return districts.find((d) => {
+            const supervisorId = d.supervisor?._id || d.supervisor;
+            if (!supervisorId || supervisorId !== staffId) return false;
+            if (editingDistrict && d._id === editingDistrict._id) return false;
+            return true;
+        }) || null;
+    };
 
     if (loading) return <LoadingScreen />;
 
@@ -231,6 +330,14 @@ const DistrictManagement = () => {
                                                                 <span className="text-[13px] font-bold text-text-main transition-colors">
                                                                     {d.supervisor.fullName}
                                                                 </span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setSwapDialog({ fromDistrict: d, otherId: '' })}
+                                                                    className="p-1.5 rounded-lg text-text-muted hover:text-navy hover:bg-navy/10 transition-all"
+                                                                    title="Switch supervisor with another district"
+                                                                >
+                                                                    <ArrowLeftRight size={15} />
+                                                                </button>
                                                             </div>
                                                         ) : (
                                                             <span className="text-[12px] font-black text-text-muted italic opacity-40 transition-colors">Unassigned</span>
@@ -361,12 +468,33 @@ const DistrictManagement = () => {
                                             required
                                             className="w-full bg-table-header-bg border-none rounded-xl px-5 py-3.5 text-[14px] font-black text-navy focus:ring-2 focus:ring-navy/5 transition-all appearance-none cursor-pointer outline-none"
                                             value={formData.supervisor}
-                                            onChange={(e) => setFormData({ ...formData, supervisor: e.target.value })}
+                                            onChange={(e) => {
+                                                const nextSupervisor = e.target.value;
+                                                const managedDistrict = districtManagedBySupervisor(nextSupervisor);
+                                                if (managedDistrict) {
+                                                    setFormData({ ...formData, supervisor: '' });
+                                                    setFeedbackDialog({
+                                                        title: 'Supervisor Already Assigned',
+                                                        message: `This supervisor manages ${managedDistrict.name}. Switch supervisors between these districts?`,
+                                                        canSwitch: true,
+                                                        supervisorId: nextSupervisor,
+                                                        otherDistrictId: managedDistrict._id,
+                                                        otherDistrictName: managedDistrict.name
+                                                    });
+                                                    return;
+                                                }
+                                                setFormData({ ...formData, supervisor: nextSupervisor });
+                                            }}
                                         >
-                                            <option value="">Select an available supervisor...</option>
-                                            {availableStaff.map(s => (
-                                                <option key={s._id} value={s._id}>{s.fullName} ({s.role})</option>
-                                            ))}
+                                            <option value="">Select a supervisor...</option>
+                                            {availableStaff.map(s => {
+                                                const managed = districtManagedBySupervisor(s._id);
+                                                return (
+                                                    <option key={s._id} value={s._id}>
+                                                        {s.fullName} ({s.role}){managed ? ` — ${managed.name}` : ''}
+                                                    </option>
+                                                );
+                                            })}
                                         </select>
                                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" size={18} />
                                     </div>
@@ -431,6 +559,93 @@ const DistrictManagement = () => {
                                 }`}
                             >
                                 {toggleStatusTarget.isActive !== false ? 'Yes, Deactivate' : 'Yes, Activate'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {feedbackDialog && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-navy/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+                    <div className="bg-card-bg rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-600 animate-in zoom-in-95 duration-300">
+                        <div className="p-8">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center">
+                                    <Info size={24} />
+                                </div>
+                                <h3 className="text-xl font-black text-navy tracking-tight transition-colors">
+                                    {feedbackDialog.title}
+                                </h3>
+                            </div>
+                            <p className="text-[14px] text-text-muted font-bold leading-relaxed transition-colors">
+                                {feedbackDialog.message}
+                            </p>
+                        </div>
+                        <div className="px-8 py-6 border-t border-border-color flex justify-end gap-3 bg-navy/5 transition-colors duration-300">
+                            <button
+                                onClick={() => setFeedbackDialog(null)}
+                                className="px-6 py-2.5 text-[13px] font-black text-text-muted hover:text-navy transition-colors uppercase tracking-widest"
+                            >
+                                {feedbackDialog.canSwitch ? 'Cancel' : 'OK'}
+                            </button>
+                            {feedbackDialog.canSwitch && (
+                                <button
+                                    onClick={confirmSwitchFromDialog}
+                                    className="px-6 py-2.5 bg-navy text-white text-[13px] font-black rounded-xl hover:brightness-110 shadow-lg transition-all active:scale-95 uppercase tracking-widest inline-flex items-center gap-2"
+                                >
+                                    <ArrowLeftRight size={15} />
+                                    Switch
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {swapDialog && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-navy/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+                    <div className="bg-card-bg rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-600 animate-in zoom-in-95 duration-300">
+                        <div className="p-8">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="w-12 h-12 bg-navy/10 text-navy rounded-2xl flex items-center justify-center">
+                                    <ArrowLeftRight size={24} />
+                                </div>
+                                <h3 className="text-xl font-black text-navy tracking-tight transition-colors">
+                                    Switch Supervisors
+                                </h3>
+                            </div>
+                            <p className="text-[14px] text-text-muted font-bold leading-relaxed mb-5">
+                                Swap the supervisor of <span className="text-navy">{swapDialog.fromDistrict.name}</span> with another district.
+                            </p>
+                            <select
+                                className="w-full bg-table-header-bg border-none rounded-xl px-5 py-3.5 text-[14px] font-black text-navy outline-none"
+                                value={swapDialog.otherId}
+                                onChange={(e) => setSwapDialog({ ...swapDialog, otherId: e.target.value })}
+                            >
+                                <option value="">Select district to switch with...</option>
+                                {districts
+                                    .filter((d) => d._id !== swapDialog.fromDistrict._id && d.supervisor)
+                                    .map((d) => (
+                                        <option key={d._id} value={d._id}>
+                                            {d.name} — {d.supervisor.fullName}
+                                        </option>
+                                    ))}
+                            </select>
+                        </div>
+                        <div className="px-8 py-6 border-t border-border-color flex justify-end gap-3 bg-navy/5">
+                            <button
+                                onClick={() => setSwapDialog(null)}
+                                className="px-6 py-2.5 text-[13px] font-black text-text-muted hover:text-navy uppercase tracking-widest"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmSwapDistricts}
+                                disabled={!swapDialog.otherId}
+                                className="px-6 py-2.5 bg-navy text-white text-[13px] font-black rounded-xl uppercase tracking-widest inline-flex items-center gap-2 disabled:opacity-40"
+                            >
+                                <ArrowLeftRight size={15} />
+                                Switch
                             </button>
                         </div>
                     </div>

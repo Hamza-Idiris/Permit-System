@@ -501,7 +501,13 @@ class _EditApplicationScreenState extends State<EditApplicationScreen> {
                           children: const [
                             CircularProgressIndicator(color: ColorPallete.primaryNavy),
                             SizedBox(height: 20),
-                            Text('Talo: Fadlan sug...', style: TextStyle(fontWeight: FontWeight.bold)),
+                            Text('Waiting for WaafiPay…', style: TextStyle(fontWeight: FontWeight.bold)),
+                            SizedBox(height: 8),
+                            Text(
+                              'Approve the payment PIN on your phone if asked.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 13, color: Colors.grey),
+                            ),
                           ],
                         )
                       else ...[

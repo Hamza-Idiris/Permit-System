@@ -26,6 +26,19 @@ const notificationSchema = new mongoose.Schema({
   relatedId: {
     type: String,
     required: false
+  },
+  sender: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  senderName: {
+    type: String,
+    default: ''
+  },
+  senderDistrict: {
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true

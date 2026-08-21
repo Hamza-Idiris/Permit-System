@@ -1,9 +1,11 @@
 const BuildingType = require('../models/BuildingType');
 
-// Get all building types
+// Get all building types (active by default, or all if includeInactive=true)
 const getBuildingTypes = async (req, res) => {
   try {
-    const buildingTypes = await BuildingType.find().sort({ createdAt: -1 });
+    const { includeInactive } = req.query;
+    const filter = includeInactive === 'true' ? {} : { isActive: { $ne: false } };
+    const buildingTypes = await BuildingType.find(filter).sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: buildingTypes });
   } catch (error) {
     console.error('Error fetching building types:', error);
@@ -14,7 +16,7 @@ const getBuildingTypes = async (req, res) => {
 // Create a new building type
 const createBuildingType = async (req, res) => {
   try {
-    const { name, feeMultiplier, isPerFloor } = req.body;
+    const { name, feeMultiplier, isPerFloor, isActive } = req.body;
 
     if (!name || feeMultiplier === undefined) {
       return res.status(400).json({ success: false, message: 'Name and fee multiplier are required' });
@@ -28,7 +30,8 @@ const createBuildingType = async (req, res) => {
     const buildingType = await BuildingType.create({
       name,
       feeMultiplier,
-      isPerFloor: isPerFloor || false
+      isPerFloor: isPerFloor || false,
+      isActive: isActive !== undefined ? isActive : true
     });
 
     res.status(201).json({ success: true, message: 'Building type created successfully', data: buildingType });
@@ -42,7 +45,7 @@ const createBuildingType = async (req, res) => {
 const updateBuildingType = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, feeMultiplier, isPerFloor } = req.body;
+    const { name, feeMultiplier, isPerFloor, isActive } = req.body;
 
     const buildingType = await BuildingType.findById(id);
     if (!buildingType) {
@@ -60,6 +63,7 @@ const updateBuildingType = async (req, res) => {
     buildingType.name = name || buildingType.name;
     if (feeMultiplier !== undefined) buildingType.feeMultiplier = feeMultiplier;
     if (isPerFloor !== undefined) buildingType.isPerFloor = isPerFloor;
+    if (isActive !== undefined) buildingType.isActive = isActive;
 
     await buildingType.save();
 

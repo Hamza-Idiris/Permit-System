@@ -8,7 +8,7 @@ import { useWebSocket } from '../context/WebSocketContext';
 import {
   Bell, CheckCircle2, RefreshCw, Trash2, ChevronDown,
   Filter, Calendar, ArrowRight, AlertCircle, FileText,
-  CheckCircle, Info, Archive, History, Inbox, Megaphone,
+  CheckCircle, Info, Archive, History, Inbox, Megaphone, Undo2,
   Send, XCircle, Users
 } from 'lucide-react';
 
@@ -220,6 +220,19 @@ const NotificationsHub = () => {
     }
   };
 
+  const unarchiveNotif = async (e, id) => {
+    e.stopPropagation();
+    setActionId(id);
+    try {
+      await axios.put(`${API}/${id}/unarchive`, {}, { headers: authHeaders });
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+    } catch (err) {
+      console.error('Unarchive failed', err);
+    } finally {
+      setActionId(null);
+    }
+  };
+
   const markAllAsRead = async () => {
     try {
       const unread = notifications.filter((n) => !n.isRead);
@@ -295,7 +308,10 @@ const NotificationsHub = () => {
   };
 
   const filtered = notifications.filter((n) => {
-    const matchesSearch = n.message.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch =
+      n.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (n.senderName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (n.senderDistrict || '').toLowerCase().includes(searchTerm.toLowerCase());
     if (activeFilter === 'Unread') return matchesSearch && !n.isRead;
     const matchesFilter = activeFilter === 'All' || n.type === activeFilter;
     return matchesSearch && matchesFilter;
@@ -467,13 +483,28 @@ const NotificationsHub = () => {
                               <p className={`text-[13.5px] leading-relaxed ${notif.isRead ? 'text-text-muted font-bold' : 'text-text-main font-bold'}`}>
                                 <MessageText message={notif.message} />
                               </p>
+                              {notif.senderName && (
+                                <p className="mt-1.5 text-[11px] font-black text-navy/80">
+                                  From {notif.senderName}
+                                  {notif.senderDistrict ? ` · ${notif.senderDistrict}` : ''}
+                                </p>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               {!notif.isRead && !showArchived && (
                                 <div className="w-2.5 h-2.5 rounded-full bg-navy animate-pulse" title="Unread" />
                               )}
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                {!showArchived && (
+                              <div className={`flex items-center gap-1 transition-all ${showArchived ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                {showArchived ? (
+                                  <button
+                                    onClick={(e) => unarchiveNotif(e, notif._id)}
+                                    disabled={actionId === notif._id}
+                                    className="p-2.5 text-navy hover:text-navy hover:bg-navy/10 rounded-xl"
+                                    title="Unarchive"
+                                  >
+                                    {actionId === notif._id ? <RefreshCw size={14} className="animate-spin" /> : <Undo2 size={14} />}
+                                  </button>
+                                ) : (
                                   <button
                                     onClick={(e) => archiveNotif(e, notif._id)}
                                     disabled={actionId === notif._id}
