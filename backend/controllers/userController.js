@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const District = require('../models/District');
 const jwt = require('jsonwebtoken');
 const sendEmail = require('../utils/sendEmail');
 
@@ -134,7 +135,25 @@ const getUsers = async (req, res) => {
   try {
     // Exclude superadmin users from the list
     const users = await User.find({ role: { $ne: 'superadmin' } });
-    res.json({ success: true, result: users.length, data: users });
+
+    // Sync primary district from District collection for all supervisors
+    const districts = await District.find({ supervisor: { $ne: null } });
+    const districtMap = new Map();
+    districts.forEach(d => {
+      if (d.supervisor) {
+        districtMap.set(d.supervisor.toString(), d.name);
+      }
+    });
+
+    const syncedUsers = users.map(u => {
+      const uObj = u.toObject();
+      if (districtMap.has(u._id.toString())) {
+        uObj.district = districtMap.get(u._id.toString());
+      }
+      return uObj;
+    });
+
+    res.json({ success: true, result: syncedUsers.length, data: syncedUsers });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error' });
   }
@@ -273,7 +292,7 @@ const updateUser = async (req, res) => {
       user.email = req.body.email || user.email;
       user.phone = req.body.phone || user.phone;
       user.role = req.body.role || user.role;
-      user.district = req.body.district || user.district;
+      user.district = req.body.district !== undefined ? req.body.district : user.district;
       user.gender = req.body.gender || user.gender;
       if (typeof req.body.isActive === 'boolean') {
         user.isActive = req.body.isActive;

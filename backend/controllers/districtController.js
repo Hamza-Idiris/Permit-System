@@ -88,19 +88,25 @@ const updateDistrict = async (req, res) => {
         const nextSupervisorId = supervisor ? supervisorIdValue(supervisor) : '';
         const currentSupervisorId = supervisorIdValue(district.supervisor);
 
-        if (nextSupervisorId && nextSupervisorId !== currentSupervisorId) {
-            const alreadyManaging = await findOtherDistrictForSupervisor(nextSupervisorId, district._id);
-            if (alreadyManaging) {
-                return res.status(400).json({
-                    success: false,
-                    message: `This supervisor already manages ${alreadyManaging.name}. One supervisor can manage only one district.`
-                });
+        if (nextSupervisorId !== currentSupervisorId) {
+            if (nextSupervisorId) {
+                const alreadyManaging = await findOtherDistrictForSupervisor(nextSupervisorId, district._id);
+                if (alreadyManaging) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `This supervisor already manages ${alreadyManaging.name}. One supervisor can manage only one district.`
+                    });
+                }
+                await User.findByIdAndUpdate(nextSupervisorId, { district: name || district.name });
             }
 
-            await User.findByIdAndUpdate(nextSupervisorId, { district: name || district.name });
             if (currentSupervisorId) {
                 await User.findByIdAndUpdate(currentSupervisorId, { district: '' });
             }
+        }
+
+        if (name && name !== district.name) {
+            await User.updateMany({ district: district.name }, { district: name });
         }
 
         const updatePayload = {
@@ -176,8 +182,8 @@ const switchSupervisors = async (req, res) => {
             return res.status(404).json({ success: false, message: 'District not found' });
         }
 
-        const supervisorA = districtA.supervisor;
-        const supervisorB = districtB.supervisor;
+        const supervisorA = districtA.supervisor ? supervisorIdValue(districtA.supervisor) : null;
+        const supervisorB = districtB.supervisor ? supervisorIdValue(districtB.supervisor) : null;
 
         if (!supervisorA && !supervisorB) {
             return res.status(400).json({

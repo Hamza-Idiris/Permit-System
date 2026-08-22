@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const District = require('../models/District');
 const jwt = require('jsonwebtoken');
 const sendEmail = require('../utils/sendEmail');
 const crypto = require('crypto');
@@ -90,6 +91,15 @@ const login = async (req, res) => {
       });
     }
 
+    // Sync current district assignment if managing a district
+    const managedDistrict = await District.findOne({ supervisor: user._id });
+    const effectiveDistrict = managedDistrict ? managedDistrict.name : (user.district || '');
+
+    if (user.district !== effectiveDistrict) {
+      user.district = effectiveDistrict;
+      await user.save({ validateBeforeSave: false });
+    }
+
     res.json({
       success: true,
       _id: user._id,
@@ -97,11 +107,11 @@ const login = async (req, res) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
-      district: user.district,
+      district: effectiveDistrict,
       isActive: user.isActive !== false,
       passwordLastChanged: user.passwordLastChanged,
       createdAt: user.createdAt,
-      token: generateToken(user._id, user.role, user.fullName, user.district),
+      token: generateToken(user._id, user.role, user.fullName, effectiveDistrict),
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error' });
